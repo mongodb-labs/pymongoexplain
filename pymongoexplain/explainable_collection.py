@@ -29,7 +29,7 @@ class BaseCommand():
                 ret[new_key] = d[key]
             else:
                 ret[key] = d[key]
-        return ret
+        return {k: v for k, v in ret.items() if v != None}
 
     def get_SON(self):
         return self.dictionary
@@ -38,11 +38,15 @@ class BaseCommand():
 class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
                  kwargs):
-        self.dictionary = {"update": collection.name,
+        super(UpdateCommand, self).__init__(kwargs)
+        return_dictionary = {"update": collection.name,
                            "updates": [{"q": filter, "u": update}]}
-        for key, value in kwargs.items():
-            self.dictionary["updates"][0][key] = value
-        super(UpdateCommand, self).__init__(self.dictionary)
+        for key, value in self.dictionary.items():
+            if key == "bypassDocumentValidation":
+                return_dictionary[key] = value
+            else:
+                return_dictionary["updates"][0][key] = value
+        self.dictionary = return_dictionary
 
 class DistinctCommand(BaseCommand):
     def __init__(self, key, collection: pymongo.collection, filter, session,
@@ -79,8 +83,17 @@ class ExplainCollection():
         return self.collection.database.command(
             {"explain": command.get_SON(), "verbosity": "queryPlanner"})
 
-    def update_one(self, filter, update, **kwargs):
+    def update_one(self, filter, update, upsert=False,
+                   bypass_document_validation=False,
+                   collation=None, array_filters=None, hint=None,
+                   session=None, **kwargs):
         kwargs["multi"] = False
+        kwargs["upsert"] = upsert
+        kwargs["bypass_document_validation"] = bypass_document_validation
+        kwargs["collation"] = collation
+        kwargs["array_filters"] = array_filters
+        kwargs["hint"] = hint
+        kwargs["session"] = session
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
