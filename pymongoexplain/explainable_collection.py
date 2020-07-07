@@ -23,24 +23,65 @@ class BaseCommand():
 
 class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
-                 **kwargs):
+                 kwargs):
         self.dictionary = {"update": collection.name,
                            "updates": [{"q": filter, "u": update}]}
-        for key, value in kwargs:
+        for key, value in kwargs.items():
             self.dictionary["updates"][0][key] = value
         super(UpdateCommand, self).__init__(self.dictionary)
 
+class DistinctCommand(BaseCommand):
+    def __init__(self, key, collection: pymongo.collection, filter, session,
+                 kwargs):
+        self.dictionary = {"distinct": collection.name, "key": key, "query":
+            filter}
+        for key, value in kwargs.items():
+            self.dictionary[key] = value
+        super(UpdateCommand, self).__init__(self.dictionary)
+
+class AggregateCommand(BaseCommand):
+    def __init__(self, collection: pymongo.collection, pipeline, kwargs):
+        self.dictionary = {"aggregate": collection.name, "pipeline": pipeline,
+                           "query": filter}
+        for key, value in kwargs.items():
+            self.dictionary[key] = value
+        super(UpdateCommand, self).__init__(self.dictionary)
+
+class CountCommand(BaseCommand):
+    def __init__(self, collection: pymongo.collection, filter,
+                 kwargs):
+        self.dictionary = {"count": collection.name,
+                           "query": filter}
+        for key, value in kwargs.items():
+            self.dictionary[key] = value
+        super(UpdateCommand, self).__init__(self.dictionary)
 
 class ExplainCollection():
     def __init__(self, collection):
         self.collection = collection
 
-    def update_one(self, filter, update):
-        command = UpdateCommand(self.collection, filter, update)
+    def _explain_command(self, command):
         print({"explain": command.get_SON(), "verbosity": "queryPlanner"})
         return self.collection.database.command(
             {"explain": command.get_SON(), "verbosity": "queryPlanner"})
 
+    def update_one(self, filter, update, **kwargs):
+        kwargs["multi"] = False
+        command = UpdateCommand(self.collection, filter, update, kwargs)
+        return self._explain_command(command)
+
+    def update_many(self, filter, update, **kwargs):
+        kwargs["multi"] = True
+        command = UpdateCommand(self.collection, filter, update, kwargs)
+        return self._explain_command(command)
+
+    def distinct(self, key, filter=None, session=None, **kwargs):
+        command = DistinctCommand(key, self.collection, filter, session, kwargs)
+        return self._explain_command(command)
+
+    def aggregate(self, pipeline, session=None, **kwargs):
+        command = AggregateCommand(key, self.collection, filter, session, kwargs)
+        return self._explain_command(command)
 
 from pymongo import MongoClient
 
