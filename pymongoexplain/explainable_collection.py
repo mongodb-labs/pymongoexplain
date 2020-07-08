@@ -39,20 +39,20 @@ class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
                  kwargs):
         super(UpdateCommand, self).__init__(kwargs)
-        return_dictionary = {"update": collection.name,
-                           "updates": [{"q": filter, "u": update}]}
+        return_dictionary = SON({"update": collection.name,
+                           "updates": [{"q": filter, "u": update}]})
         for key, value in self.dictionary.items():
             if key == "bypassDocumentValidation":
                 return_dictionary[key] = value
             else:
                 return_dictionary["updates"][0][key] = value
-        self.dictionary = SON(return_dictionary)
+        self.dictionary = return_dictionary
 
 class DistinctCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, key, filter, session,
                  kwargs):
-        self.dictionary = {"distinct": collection.name, "key": key, "query":
-            filter}
+        self.dictionary = SON({"distinct": collection.name, "key": key, "query":
+            filter})
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -60,7 +60,8 @@ class DistinctCommand(BaseCommand):
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, session,
                  kwargs):
-        self.dictionary = {"aggregate": collection.name, "pipeline": pipeline}
+        self.dictionary = SON({"aggregate": collection.name, "pipeline":
+            pipeline})
         self.dictionary["cursor"] = { }
         for key, value in kwargs.items():
             self.dictionary[key] = value
@@ -69,8 +70,8 @@ class AggregateCommand(BaseCommand):
 class CountCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
                  kwargs):
-        self.dictionary = {"count": collection.name,
-                           "query": filter}
+        self.dictionary = SON({"count": collection.name,
+                           "query": filter})
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
