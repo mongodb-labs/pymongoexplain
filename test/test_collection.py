@@ -57,6 +57,17 @@ class TestExplainableCollection(unittest.TestCase):
         except:
             assert False
 
+    def test_aggregate(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        try:
+            explain.aggregate([{"$project": {"tags": 1 }}, {"$unwind": "$tags"},
+                               {"$group": {"_id": "$tags", "count":
+                                   {"$sum" : 1 } }}], None)
+        except:
+            assert False
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -59,9 +59,10 @@ class DistinctCommand(BaseCommand):
         super(DistinctCommand, self).__init__(self.dictionary)
 
 class AggregateCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, pipeline, kwargs):
-        self.dictionary = {"aggregate": collection.name, "pipeline": pipeline,
-                           "query": filter}
+    def __init__(self, collection: pymongo.collection, pipeline, session,
+                 kwargs):
+        self.dictionary = {"aggregate": collection.name, "pipeline": pipeline}
+        self.dictionary["cursor"] = { }
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super(AggregateCommand, self).__init__(self.dictionary)
@@ -108,7 +109,8 @@ class ExplainCollection():
         return self._explain_command(command)
 
     def aggregate(self, pipeline, session=None, **kwargs):
-        command = AggregateCommand(key, self.collection, filter, session, kwargs)
+        command = AggregateCommand(self.collection, pipeline, session,
+                                   kwargs)
         return self._explain_command(command)
 
     def count_documents(self, filter, session=None, **kwargs):
