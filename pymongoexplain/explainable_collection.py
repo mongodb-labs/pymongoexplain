@@ -80,8 +80,9 @@ class ExplainCollection():
         self.collection = collection
 
     def _explain_command(self, command):
-        return self.collection.database.command(
-            SON({"explain": command.get_SON(), "verbosity": "queryPlanner"}))
+        explain_command = SON({"explain": command.get_SON()})
+        explain_command["verbosity"] = "queryPlanner"
+        return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
