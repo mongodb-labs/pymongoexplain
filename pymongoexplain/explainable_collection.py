@@ -111,4 +111,6 @@ class ExplainCollection():
         command = AggregateCommand(key, self.collection, filter, session, kwargs)
         return self._explain_command(command)
 
-
+    def count_documents(self, filter, session=None, **kwargs):
+        command = CountCommand(self.collection, filter,kwargs)
+        return self._explain_command(command)

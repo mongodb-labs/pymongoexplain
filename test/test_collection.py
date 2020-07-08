@@ -29,6 +29,16 @@ class TestExplainableCollection(unittest.TestCase):
         except:
             assert False
 
+    def test_update_many(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        try:
+            explain.update_many({"quantity": 1057, "category": "apparel"},
+                               {"$set": {"reorder": True}})
+        except:
+            assert False
+
     def test_distinct(self):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
@@ -37,6 +47,17 @@ class TestExplainableCollection(unittest.TestCase):
             explain.distinct("item.sku")
         except:
             assert False
+
+    def test_count_documents(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        try:
+            explain.count_documents({"ord_dt": { "$gt": 10}})
+        except:
+            assert False
+
+
 
 
 if __name__ == '__main__':
