@@ -14,7 +14,7 @@
 
 
 import pymongo
-
+from bson.son import SON
 
 class BaseCommand():
     def __init__(self, dictionary):
@@ -29,7 +29,7 @@ class BaseCommand():
                 ret[new_key] = d[key]
             else:
                 ret[key] = d[key]
-        return {k: v for k, v in ret.items() if v != None}
+        return SON({k: v for k, v in ret.items() if v != None})
 
     def get_SON(self):
         return self.dictionary
@@ -46,7 +46,7 @@ class UpdateCommand(BaseCommand):
                 return_dictionary[key] = value
             else:
                 return_dictionary["updates"][0][key] = value
-        self.dictionary = return_dictionary
+        self.dictionary = SON(return_dictionary)
 
 class DistinctCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, key, filter, session,
