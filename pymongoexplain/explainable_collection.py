@@ -21,7 +21,7 @@ class BaseCommand():
         self.dictionary = self.convert_to_camelcase(dictionary)
 
     def convert_to_camelcase(self, d: dict) -> dict:
-        ret = dict()
+        ret = SON()
         for key in d.keys():
             if "_" in key:
                 new_key = key.split("_")[0] + ''.join(
