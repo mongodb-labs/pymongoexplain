@@ -55,8 +55,7 @@ class DistinctCommand(BaseCommand):
             filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        print(self.dictionary)
-        super(DistinctCommand, self).__init__(self.dictionary)
+        super().__init__(self.dictionary)
 
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, session,
@@ -65,7 +64,7 @@ class AggregateCommand(BaseCommand):
         self.dictionary["cursor"] = { }
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super(AggregateCommand, self).__init__(self.dictionary)
+        super().__init__(self.dictionary)
 
 class CountCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
@@ -74,14 +73,13 @@ class CountCommand(BaseCommand):
                            "query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super(CountCommand, self).__init__(self.dictionary)
+        super().__init__(self.dictionary)
 
 class ExplainCollection():
     def __init__(self, collection):
         self.collection = collection
 
     def _explain_command(self, command):
-        print({"explain": command.get_SON(), "verbosity": "queryPlanner"})
         return self.collection.database.command(
             {"explain": command.get_SON(), "verbosity": "queryPlanner"})
 

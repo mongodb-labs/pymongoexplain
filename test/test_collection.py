@@ -23,50 +23,41 @@ class TestExplainableCollection(unittest.TestCase):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
         explain = ExplainCollection(collection)
-        try:
-            explain.update_one({"quantity": 1057, "category": "apparel"},
+        res = explain.update_one({"quantity": 1057, "category": "apparel"},
                                {"$set": {"reorder": True}})
-        except:
-            assert False
+        self.assertIn("queryPlanner", res)
 
     def test_update_many(self):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
         explain = ExplainCollection(collection)
-        try:
-            explain.update_many({"quantity": 1057, "category": "apparel"},
-                               {"$set": {"reorder": True}})
-        except:
-            assert False
+        res = explain.update_many({"quantity": 1057, "category": "apparel"},
+                                {"$set": {"reorder": True}})
+        self.assertIn("queryPlanner", res)
 
     def test_distinct(self):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
         explain = ExplainCollection(collection)
-        try:
-            explain.distinct("item.sku")
-        except:
-            assert False
+        res = explain.distinct("item.sku")
+        self.assertIn("queryPlanner", res)
 
     def test_count_documents(self):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
         explain = ExplainCollection(collection)
-        try:
-            explain.count_documents({"ord_dt": { "$gt": 10}})
-        except:
-            assert False
+        res = explain.count_documents({"ord_dt": {"$gt": 10}})
+        self.assertIn("queryPlanner", res)
 
     def test_aggregate(self):
         client = MongoClient(serverSelectionTimeoutMS=1000)
         collection = client.db.products
         explain = ExplainCollection(collection)
-        try:
-            explain.aggregate([{"$project": {"tags": 1 }}, {"$unwind": "$tags"},
-                               {"$group": {"_id": "$tags", "count":
-                                   {"$sum" : 1 } }}], None)
-        except:
-            assert False
+        res = explain.aggregate([{"$project": {"tags": 1}}, {"$unwind":
+                                                                 "$tags"}, {
+                                     "$group": {"_id": "$tags",
+                                                "count": {"$sum": 1}}}], None)
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
 
 
 if __name__ == '__main__':
