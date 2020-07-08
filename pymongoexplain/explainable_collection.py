@@ -49,13 +49,14 @@ class UpdateCommand(BaseCommand):
         self.dictionary = return_dictionary
 
 class DistinctCommand(BaseCommand):
-    def __init__(self, key, collection: pymongo.collection, filter, session,
+    def __init__(self, collection: pymongo.collection, key, filter, session,
                  kwargs):
         self.dictionary = {"distinct": collection.name, "key": key, "query":
             filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super(UpdateCommand, self).__init__(self.dictionary)
+        print(self.dictionary)
+        super(DistinctCommand, self).__init__(self.dictionary)
 
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, kwargs):
@@ -63,7 +64,7 @@ class AggregateCommand(BaseCommand):
                            "query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super(UpdateCommand, self).__init__(self.dictionary)
+        super(AggregateCommand, self).__init__(self.dictionary)
 
 class CountCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
@@ -72,7 +73,7 @@ class CountCommand(BaseCommand):
                            "query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super(UpdateCommand, self).__init__(self.dictionary)
+        super(CountCommand, self).__init__(self.dictionary)
 
 class ExplainCollection():
     def __init__(self, collection):
@@ -103,7 +104,7 @@ class ExplainCollection():
         return self._explain_command(command)
 
     def distinct(self, key, filter=None, session=None, **kwargs):
-        command = DistinctCommand(key, self.collection, filter, session, kwargs)
+        command = DistinctCommand(self.collection, key, filter, session, kwargs)
         return self._explain_command(command)
 
     def aggregate(self, pipeline, session=None, **kwargs):

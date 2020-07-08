@@ -29,6 +29,15 @@ class TestExplainableCollection(unittest.TestCase):
         except:
             assert False
 
+    def test_distinct(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        try:
+            explain.distinct("item.sku")
+        except:
+            assert False
+
 
 if __name__ == '__main__':
     unittest.main()
