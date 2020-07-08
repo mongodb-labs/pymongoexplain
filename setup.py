@@ -22,6 +22,7 @@ setup(
     url="https://github.com/mongodb-labs/pymongoexplain",
     keywords=["mongo", "mongodb", "pymongo"],
     test_suite="test",
+    tests_require=["pymongo"],
     license="Apache License, Version 2.0",
     classifiers=[
         "Development Status :: 4 - Beta",
