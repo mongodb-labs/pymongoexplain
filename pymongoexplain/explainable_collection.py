@@ -18,18 +18,21 @@ from bson.son import SON
 
 class BaseCommand():
     def __init__(self, dictionary):
+        self.command_name = None
         self.dictionary = self.convert_to_camelcase(dictionary)
 
     def convert_to_camelcase(self, d: dict) -> dict:
         ret = SON()
         for key in d.keys():
+            if d[key] is None:
+                continue
             if "_" in key:
                 new_key = key.split("_")[0] + ''.join(
                     [i.capitalize() for i in key.split("_")[1:]])
                 ret[new_key] = d[key]
             else:
                 ret[key] = d[key]
-        return SON({k: v for k, v in ret.items() if v != None})
+        return ret
 
     def get_SON(self):
         return self.dictionary
@@ -39,39 +42,45 @@ class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
                  kwargs):
         super(UpdateCommand, self).__init__(kwargs)
-        return_dictionary = SON({"update": collection.name,
-                           "updates": [{"q": filter, "u": update}]})
+        return_dictionary = SON([("update", collection.name), ("updates",
+                                                               [SON([(
+            "q", SON(filter)), ("u", SON(update))])])])
         for key, value in self.dictionary.items():
             if key == "bypassDocumentValidation":
                 return_dictionary[key] = value
             else:
+                print(return_dictionary["updates"])
                 return_dictionary["updates"][0][key] = value
         self.dictionary = return_dictionary
+
 
 class DistinctCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, key, filter, session,
                  kwargs):
-        self.dictionary = SON({"distinct": collection.name, "key": key, "query":
-            filter})
+        self.dictionary = SON([("distinct", collection.name), ("key", key),
+                              ("query",
+            filter)])
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
+
 
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, session,
                  kwargs):
-        self.dictionary = SON({"aggregate": collection.name, "pipeline":
-            pipeline})
-        self.dictionary["cursor"] = { }
+        self.dictionary = SON([("aggregate", collection.name), ("pipeline",
+            pipeline)])
+        self.dictionary["cursor"] = {}
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
 
+
 class CountCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
                  kwargs):
-        self.dictionary = SON({"count": collection.name,
-                           "query": filter})
+        self.dictionary = SON([("count", collection.name),
+                           ("query", filter)])
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -81,8 +90,9 @@ class ExplainCollection():
         self.collection = collection
 
     def _explain_command(self, command):
-        explain_command = SON({"explain": command.get_SON()})
+        explain_command = SON([("explain", command.get_SON())])
         explain_command["verbosity"] = "queryPlanner"
+        print(explain_command)
         return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
