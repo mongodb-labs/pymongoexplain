@@ -81,7 +81,7 @@ class ExplainCollection():
 
     def _explain_command(self, command):
         return self.collection.database.command(
-            {"explain": command.get_SON(), "verbosity": "queryPlanner"})
+            SON({"explain": command.get_SON(), "verbosity": "queryPlanner"}))
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
