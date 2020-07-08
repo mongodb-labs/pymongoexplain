@@ -58,7 +58,5 @@ class TestExplainableCollection(unittest.TestCase):
             assert False
 
 
-
-
 if __name__ == '__main__':
     unittest.main()
