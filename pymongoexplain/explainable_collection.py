@@ -19,11 +19,10 @@ from bson.son import SON
 
 class BaseCommand():
     def __init__(self, dictionary):
-        self.command_name = None
         self.dictionary = self.convert_to_camelcase(dictionary)
 
     def convert_to_camelcase(self, d: dict) -> dict:
-        ret = SON()
+        ret = dict()
         for key in d.keys():
             if d[key] is None:
                 continue
@@ -36,16 +35,18 @@ class BaseCommand():
         return ret
 
     def get_SON(self):
-        return self.dictionary
+        cmd = SON([(self.command_name, self.collection)])
+        cmd.update(self.dictionary)
+        return cmd
 
 
 class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
                  kwargs):
         super().__init__(kwargs)
-        return_dictionary = SON([("update", collection.name), ("updates",
-                                                               [SON([(
-            "q", SON(filter)), ("u", SON(update))])])])
+        self.command_name = "update"
+        self.collection = collection.name
+        return_dictionary =  {"updates":[{"q": filter, "u": update}]}
         for key, value in self.dictionary.items():
             if key == "bypassDocumentValidation":
                 return_dictionary[key] = value
@@ -57,9 +58,9 @@ class UpdateCommand(BaseCommand):
 class DistinctCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, key, filter, session,
                  kwargs):
-        self.dictionary = SON([("distinct", collection.name), ("key", key),
-                              ("query",
-            filter)])
+        self.command_name = "distinct"
+        self.collection = collection.name
+        self.dictionary = {"key": key, "query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -68,9 +69,9 @@ class DistinctCommand(BaseCommand):
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, session,
                  kwargs):
-        self.dictionary = SON([("aggregate", collection.name), ("pipeline",
-            pipeline)])
-        self.dictionary["cursor"] = {}
+        self.command_name = "aggregate"
+        self.collection = collection.name
+        self.dictionary = {"pipeline": pipeline, "cursor": {}}
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -79,8 +80,9 @@ class AggregateCommand(BaseCommand):
 class CountCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
                  kwargs):
-        self.dictionary = SON([("count", collection.name),
-                           ("query", filter)])
+        self.command_name = "count"
+        self.collection = collection.name
+        self.dictionary = {"query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -90,9 +92,10 @@ class DeleteCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
                  limit, collation, kwargs):
         super().__init__(kwargs)
-        return_dictionary = SON([("delete", collection.name), ("deletes",
-        [SON([("q", SON(filter)), ("limit", limit), ("collation",
-                                                     collation)])])])
+        self.command_name = "delete"
+        self.collection = collection.name
+        return_dictionary = {"deletes": [{"q": filter, "limit": limit,
+                                         "collation": collation}]}
 
         for key, value in self.dictionary.items():
             return_dictionary[key] = value
@@ -139,6 +142,7 @@ class ExplainCollection():
     def count_documents(self, filter, session=None, **kwargs):
         command = CountCommand(self.collection, filter,kwargs)
         return self._explain_command(command)
+
 
     def delete_one(self, filter, collation=None, session=None, **kwargs):
         limit = 1
