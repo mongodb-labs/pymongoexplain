@@ -59,6 +59,20 @@ class TestExplainableCollection(unittest.TestCase):
                                                 "count": {"$sum": 1}}}], None)
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
 
+    def test_delete_one(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        res = explain.delete_one({"status": "D"})
+        self.assertIn("queryPlanner", res)
+
+    def test_delete_many(self):
+        client = MongoClient(serverSelectionTimeoutMS=1000)
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        res = explain.delete_many({"status": "D"})
+        self.assertIn("queryPlanner", res)
+
 
 if __name__ == '__main__':
     unittest.main()

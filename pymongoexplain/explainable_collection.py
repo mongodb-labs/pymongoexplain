@@ -16,6 +16,7 @@
 import pymongo
 from bson.son import SON
 
+
 class BaseCommand():
     def __init__(self, dictionary):
         self.command_name = None
@@ -41,7 +42,7 @@ class BaseCommand():
 class UpdateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter, update,
                  kwargs):
-        super(UpdateCommand, self).__init__(kwargs)
+        super().__init__(kwargs)
         return_dictionary = SON([("update", collection.name), ("updates",
                                                                [SON([(
             "q", SON(filter)), ("u", SON(update))])])])
@@ -49,7 +50,6 @@ class UpdateCommand(BaseCommand):
             if key == "bypassDocumentValidation":
                 return_dictionary[key] = value
             else:
-                print(return_dictionary["updates"])
                 return_dictionary["updates"][0][key] = value
         self.dictionary = return_dictionary
 
@@ -85,6 +85,20 @@ class CountCommand(BaseCommand):
             self.dictionary[key] = value
         super().__init__(self.dictionary)
 
+
+class DeleteCommand(BaseCommand):
+    def __init__(self, collection: pymongo.collection, filter,
+                 limit, collation, kwargs):
+        super().__init__(kwargs)
+        return_dictionary = SON([("delete", collection.name), ("deletes",
+        [SON([("q", SON(filter)), ("limit", limit), ("collation",
+                                                     collation)])])])
+
+        for key, value in self.dictionary.items():
+            return_dictionary[key] = value
+        self.dictionary = return_dictionary
+
+
 class ExplainCollection():
     def __init__(self, collection):
         self.collection = collection
@@ -92,7 +106,6 @@ class ExplainCollection():
     def _explain_command(self, command):
         explain_command = SON([("explain", command.get_SON())])
         explain_command["verbosity"] = "queryPlanner"
-        print(explain_command)
         return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
@@ -125,4 +138,16 @@ class ExplainCollection():
 
     def count_documents(self, filter, session=None, **kwargs):
         command = CountCommand(self.collection, filter,kwargs)
+        return self._explain_command(command)
+
+    def delete_one(self, filter, collation=None, session=None, **kwargs):
+        limit = 1
+        command = DeleteCommand(self.collection, filter, limit, collation,
+                                kwargs)
+        return self._explain_command(command)
+
+    def delete_many(self, filter, collation=None, session=None, **kwargs):
+        limit = 0
+        command = DeleteCommand(self.collection, filter, limit, collation,
+        kwargs)
         return self._explain_command(command)
