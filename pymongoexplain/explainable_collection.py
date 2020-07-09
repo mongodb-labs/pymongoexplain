@@ -26,12 +26,17 @@ class BaseCommand():
         for key in d.keys():
             if d[key] is None:
                 continue
+            new_key = key
             if "_" in key:
                 new_key = key.split("_")[0] + ''.join(
                     [i.capitalize() for i in key.split("_")[1:]])
-                ret[new_key] = d[key]
+            if type(d[key]) == list:
+                ret[new_key] = [self.convert_to_camelcase(i) for i in d[key]
+                                if type(i) == dict]
+            elif type(d[key]) == dict:
+                ret[new_key] = self.convert_to_camelcase(d[key])
             else:
-                ret[key] = d[key]
+                ret[new_key] = d[key]
         return ret
 
     def get_SON(self):
@@ -68,10 +73,11 @@ class DistinctCommand(BaseCommand):
 
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, pipeline, session,
+                 cursor_options,
                  kwargs):
         self.command_name = "aggregate"
         self.collection = collection.name
-        self.dictionary = {"pipeline": pipeline, "cursor": {}}
+        self.dictionary = {"pipeline": pipeline, "cursor": cursor_options}
         for key, value in kwargs.items():
             self.dictionary[key] = value
         super().__init__(self.dictionary)
@@ -105,10 +111,12 @@ class DeleteCommand(BaseCommand):
 class ExplainCollection():
     def __init__(self, collection):
         self.collection = collection
+        self.last_cmd_payload = None
 
     def _explain_command(self, command):
         explain_command = SON([("explain", command.get_SON())])
         explain_command["verbosity"] = "queryPlanner"
+        self.last_cmd_payload = explain_command
         return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
@@ -136,7 +144,7 @@ class ExplainCollection():
 
     def aggregate(self, pipeline, session=None, **kwargs):
         command = AggregateCommand(self.collection, pipeline, session,
-                                   kwargs)
+                                   {},kwargs)
         return self._explain_command(command)
 
     def count_documents(self, filter, session=None, **kwargs):
@@ -155,14 +163,19 @@ class ExplainCollection():
         kwargs)
         return self._explain_command(command)
 
-    def watch(self, **kwargs):
-        change_stream_options = kwargs.copy()
-        if "pipeline" in kwargs.keys():
-            pipeline = [{"$changeStream": self.collection}]+kwargs[
-                "pipeline"]
-            del kwargs["pipeline"]
+    def watch(self, pipeline=None, full_document=None, resume_after=None,
+              max_await_time_ms=None, batch_size=None, collation=None,
+              start_at_operation_time=None, session=None, start_after=None):
+        change_stream_options = {"start_after":start_after,
+                                 "resume_after":resume_after,
+                                "start_at_operation_time":start_at_operation_time,
+                                 "full_document":full_document}
+        if pipeline is not None:
+            pipeline = [{"$changeStream": change_stream_options}]+pipeline
         else:
             pipeline = [{"$changeStream": change_stream_options}]
         command = AggregateCommand(self.collection, pipeline,
-                                   kwargs.get("session", None), kwargs)
+                                   session, {"batch_size":batch_size},
+                                   {
+                                    "collation":collation})
         return self._explain_command(command)
