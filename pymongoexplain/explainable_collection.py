@@ -158,11 +158,11 @@ class ExplainCollection():
     def watch(self, **kwargs):
         change_stream_options = kwargs.copy()
         if "pipeline" in kwargs.keys():
-            kwargs["pipeline"] = [{"$changeStream": self.collection}]+kwargs[
+            pipeline = [{"$changeStream": self.collection}]+kwargs[
                 "pipeline"]
+            del kwargs["pipeline"]
         else:
-            kwargs["pipeline"] = [{"$changeStream": change_stream_options}]
-        print(kwargs['pipeline'])
-        command = AggregateCommand(self.collection, kwargs["pipeline"],
+            pipeline = [{"$changeStream": change_stream_options}]
+        command = AggregateCommand(self.collection, pipeline,
                                    kwargs.get("session", None), kwargs)
         return self._explain_command(command)
