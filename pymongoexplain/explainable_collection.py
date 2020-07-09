@@ -143,7 +143,6 @@ class ExplainCollection():
         command = CountCommand(self.collection, filter,kwargs)
         return self._explain_command(command)
 
-
     def delete_one(self, filter, collation=None, session=None, **kwargs):
         limit = 1
         command = DeleteCommand(self.collection, filter, limit, collation,
@@ -154,4 +153,16 @@ class ExplainCollection():
         limit = 0
         command = DeleteCommand(self.collection, filter, limit, collation,
         kwargs)
+        return self._explain_command(command)
+
+    def watch(self, **kwargs):
+        change_stream_options = kwargs.copy()
+        if "pipeline" in kwargs.keys():
+            kwargs["pipeline"] = [{"$changeStream": self.collection}]+kwargs[
+                "pipeline"]
+        else:
+            kwargs["pipeline"] = [{"$changeStream": change_stream_options}]
+        print(kwargs['pipeline'])
+        command = AggregateCommand(self.collection, kwargs["pipeline"],
+                                   kwargs.get("session", None), kwargs)
         return self._explain_command(command)
