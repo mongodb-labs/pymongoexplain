@@ -15,7 +15,7 @@
 
 import pymongo
 from bson.son import SON
-from typing import Union
+from typing import Union, List
 
 Document = Union[dict, SON]
 
@@ -126,7 +126,7 @@ class ExplainCollection():
         self.collection = collection
         self.last_cmd_payload = None
 
-    def _explain_command(self, command):
+    def _explain_command(self, command: Document):
         explain_command = SON([("explain", command.get_SON())])
         explain_command["verbosity"] = "queryPlanner"
         self.last_cmd_payload = explain_command
@@ -136,41 +136,41 @@ class ExplainCollection():
                    bypass_document_validation=False,
                    collation=None, array_filters=None, hint=None,
                    session=None, **kwargs):
-        kwargs["multi"] = False
-        kwargs["upsert"] = upsert
-        kwargs["bypass_document_validation"] = bypass_document_validation
-        kwargs["collation"] = collation
-        kwargs["array_filters"] = array_filters
-        kwargs["hint"] = hint
-        kwargs["session"] = session
+        kwargs.update(locals())
+        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
-    def update_many(self, filter, update, **kwargs):
+    def update_many(self, filter: Document, update: Document, upsert=False,
+                    array_filters=None, bypass_document_validation=False, collation=None, session=None, **kwargs):
+        kwargs.update(locals())
+        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
         kwargs["multi"] = True
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
-    def distinct(self, key, filter=None, session=None, **kwargs):
+    def distinct(self, key: str, filter: Document=None, session=None, **kwargs):
         command = DistinctCommand(self.collection, key, filter, session, kwargs)
         return self._explain_command(command)
 
-    def aggregate(self, pipeline, session=None, **kwargs):
+    def aggregate(self, pipeline: List[Document], session=None, **kwargs):
         command = AggregateCommand(self.collection, pipeline, session,
                                    {},kwargs)
         return self._explain_command(command)
 
-    def count_documents(self, filter, session=None, **kwargs):
+    def count_documents(self, filter: Document, session=None, **kwargs):
         command = CountCommand(self.collection, filter,kwargs)
         return self._explain_command(command)
 
-    def delete_one(self, filter, collation=None, session=None, **kwargs):
+    def delete_one(self, filter: Document, collation=None, session=None,
+                   **kwargs):
         limit = 1
         command = DeleteCommand(self.collection, filter, limit, collation,
                                 kwargs)
         return self._explain_command(command)
 
-    def delete_many(self, filter, collation=None, session=None, **kwargs):
+    def delete_many(self, filter: Document, collation=None,
+                    session=None, **kwargs):
         limit = 0
         command = DeleteCommand(self.collection, filter, limit, collation,
         kwargs)
@@ -208,8 +208,7 @@ class ExplainCollection():
              session:Document = None, **kwargs: Union[int, str, Document,
                                                       bool]):
         kwargs.update(locals())
-        del kwargs["self"]
-        del kwargs["kwargs"]
+        del kwargs["self"], kwargs["kwargs"]
         command = FindCommand(self.collection,
                                 kwargs)
         return self._explain_command(command)
