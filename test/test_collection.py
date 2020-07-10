@@ -25,7 +25,6 @@ from bson import Timestamp
 class CommandLogger(monitoring.CommandListener):
     def started(self, event):
         self.cmd_payload = event.command
-        print(self.cmd_payload)
 
     def succeeded(self, event):
         pass

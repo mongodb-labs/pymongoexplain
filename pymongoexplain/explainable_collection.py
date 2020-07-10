@@ -15,7 +15,9 @@
 
 import pymongo
 from bson.son import SON
+from typing import Union
 
+Document = Union[dict, SON]
 
 class BaseCommand():
     def __init__(self, dictionary):
@@ -191,7 +193,18 @@ class ExplainCollection():
                                     "collation":collation})
         return self._explain_command(command)
 
-    def find(self, **kwargs):
+    def find(self, filter: Document=None, projection: list=None,
+             skip: int=0, limit: int=0, no_cursor_timeout: bool=False,
+             sort: Document=None, allow_partial_results: bool=False,
+             oplog_replay: bool=False, batch_size: int=0,
+             collation: Document=None, hint: Union[Document, str]=None,
+             max_time_ms: int=None, max: Document=None, min: Document=None,
+             return_key: bool=False,
+             show_record_id: bool=False, comment: str=None,
+             session:Document=None, **kwargs: Union[int, str, Document, bool]):
+        kwargs.update(locals())
+        del kwargs["self"]
+        del kwargs["kwargs"]
         command = FindCommand(self.collection,
                                 kwargs)
         return self._explain_command(command)
