@@ -94,6 +94,17 @@ class CountCommand(BaseCommand):
         super().__init__(self.dictionary)
 
 
+class FindCommand(BaseCommand):
+    def __init__(self, collection: pymongo.collection,
+                 kwargs):
+        self.command_name = "find"
+        self.collection = collection.name
+        self.dictionary={}
+        for key, value in kwargs.items():
+            self.dictionary[key] = value
+        super().__init__(self.dictionary)
+
+
 class DeleteCommand(BaseCommand):
     def __init__(self, collection: pymongo.collection, filter,
                  limit, collation, kwargs):
@@ -179,3 +190,10 @@ class ExplainCollection():
                                    {
                                     "collation":collation})
         return self._explain_command(command)
+
+    def find(self, **kwargs):
+        command = FindCommand(self.collection,
+                                kwargs)
+        return self._explain_command(command)
+
+

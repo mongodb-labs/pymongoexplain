@@ -26,6 +26,7 @@ class CommandLogger(monitoring.CommandListener):
     def started(self, event):
         self.cmd_payload = event.command
         print(self.cmd_payload)
+
     def succeeded(self, event):
         pass
 
@@ -148,6 +149,18 @@ class TestExplainableCollection(unittest.TestCase):
         for key in last_cmd_payload.keys():
             assert last_cmd_payload[key] == logger.cmd_payload[key]
 
+    def test_find(self):
+        logger = CommandLogger()
+        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
+            logger])
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        collection.find(filter={"status": "D"})
+        res = explain.find(filter={"status": "D"})
+        self.assertIn("queryPlanner", res)
+        last_cmd_payload = explain.last_cmd_payload
+        for key in last_cmd_payload.keys():
+            assert last_cmd_payload[key] == logger.cmd_payload[key]
 
 if __name__ == '__main__':
     unittest.main()
