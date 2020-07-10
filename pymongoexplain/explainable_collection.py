@@ -21,7 +21,7 @@ Document = Union[dict, SON]
 
 class BaseCommand():
     def __init__(self, dictionary):
-        self.dictionary = self.convert_to_camelcase(dictionary)
+        self.command_document = self.convert_to_camelcase(dictionary)
 
     def convert_to_camelcase(self, d: dict) -> dict:
         ret = dict()
@@ -43,7 +43,7 @@ class BaseCommand():
 
     def get_SON(self):
         cmd = SON([(self.command_name, self.collection)])
-        cmd.update(self.dictionary)
+        cmd.update(self.command_document)
         return cmd
 
 
@@ -54,12 +54,12 @@ class UpdateCommand(BaseCommand):
         self.command_name = "update"
         self.collection = collection.name
         return_dictionary =  {"updates":[{"q": filter, "u": update}]}
-        for key, value in self.dictionary.items():
+        for key, value in self.command_document.items():
             if key == "bypassDocumentValidation":
                 return_dictionary[key] = value
             else:
                 return_dictionary["updates"][0][key] = value
-        self.dictionary = return_dictionary
+        self.command_document = return_dictionary
 
 
 class DistinctCommand(BaseCommand):
@@ -67,10 +67,10 @@ class DistinctCommand(BaseCommand):
                  kwargs):
         self.command_name = "distinct"
         self.collection = collection.name
-        self.dictionary = {"key": key, "query": filter}
+        self.command_document = {"key": key, "query": filter}
         for key, value in kwargs.items():
-            self.dictionary[key] = value
-        super().__init__(self.dictionary)
+            self.command_document[key] = value
+        super().__init__(self.command_document)
 
 
 class AggregateCommand(BaseCommand):
@@ -79,10 +79,10 @@ class AggregateCommand(BaseCommand):
                  kwargs):
         self.command_name = "aggregate"
         self.collection = collection.name
-        self.dictionary = {"pipeline": pipeline, "cursor": cursor_options}
+        self.command_document = {"pipeline": pipeline, "cursor": cursor_options}
         for key, value in kwargs.items():
-            self.dictionary[key] = value
-        super().__init__(self.dictionary)
+            self.command_document[key] = value
+        super().__init__(self.command_document)
 
 
 class CountCommand(BaseCommand):
@@ -90,10 +90,10 @@ class CountCommand(BaseCommand):
                  kwargs):
         self.command_name = "count"
         self.collection = collection.name
-        self.dictionary = {"query": filter}
+        self.command_document = {"query": filter}
         for key, value in kwargs.items():
             self.dictionary[key] = value
-        super().__init__(self.dictionary)
+        super().__init__(self.command_document)
 
 
 class FindCommand(BaseCommand):
@@ -101,10 +101,10 @@ class FindCommand(BaseCommand):
                  kwargs):
         self.command_name = "find"
         self.collection = collection.name
-        self.dictionary={}
+        self.command_document={}
         for key, value in kwargs.items():
-            self.dictionary[key] = value
-        super().__init__(self.dictionary)
+            self.command_document[key] = value
+        super().__init__(self.command_document)
 
 
 class DeleteCommand(BaseCommand):
@@ -116,9 +116,9 @@ class DeleteCommand(BaseCommand):
         return_dictionary = {"deletes": [{"q": filter, "limit": limit,
                                          "collation": collation}]}
 
-        for key, value in self.dictionary.items():
+        for key, value in self.command_document.items():
             return_dictionary[key] = value
-        self.dictionary = return_dictionary
+        self.command_document = return_dictionary
 
 
 class ExplainCollection():
@@ -176,9 +176,12 @@ class ExplainCollection():
         kwargs)
         return self._explain_command(command)
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(self, pipeline: Document = None, full_document: Document = None,
+              resume_after= None,
+              max_await_time_ms: int = None, batch_size: int = None,
+              collation=None, start_at_operation_time=None, session:
+            pymongo.mongo_client.client_session.ClientSession=None,
+              start_after=None):
         change_stream_options = {"start_after":start_after,
                                  "resume_after":resume_after,
                                 "start_at_operation_time":start_at_operation_time,
@@ -187,21 +190,23 @@ class ExplainCollection():
             pipeline = [{"$changeStream": change_stream_options}]+pipeline
         else:
             pipeline = [{"$changeStream": change_stream_options}]
+
         command = AggregateCommand(self.collection, pipeline,
                                    session, {"batch_size":batch_size},
-                                   {
-                                    "collation":collation})
+                                   {"collation":collation, "max_await_time_ms":
+                                       max_await_time_ms})
         return self._explain_command(command)
 
-    def find(self, filter: Document=None, projection: list=None,
-             skip: int=0, limit: int=0, no_cursor_timeout: bool=False,
-             sort: Document=None, allow_partial_results: bool=False,
-             oplog_replay: bool=False, batch_size: int=0,
-             collation: Document=None, hint: Union[Document, str]=None,
-             max_time_ms: int=None, max: Document=None, min: Document=None,
-             return_key: bool=False,
-             show_record_id: bool=False, comment: str=None,
-             session:Document=None, **kwargs: Union[int, str, Document, bool]):
+    def find(self, filter: Document = None, projection: list = None,
+             skip: int = 0, limit: int = 0, no_cursor_timeout: bool = False,
+             sort: Document = None, allow_partial_results: bool = False,
+             oplog_replay: bool = False, batch_size: int=0,
+             collation: Document = None, hint: Union[Document, str] = None,
+             max_time_ms: int = None, max: Document = None, min: Document =
+             None, return_key: bool = False,
+             show_record_id: bool = False, comment: str = None,
+             session:Document = None, **kwargs: Union[int, str, Document,
+                                                      bool]):
         kwargs.update(locals())
         del kwargs["self"]
         del kwargs["kwargs"]
