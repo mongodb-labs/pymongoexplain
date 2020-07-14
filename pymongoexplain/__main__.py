@@ -23,7 +23,6 @@ class CommandLogger(monitoring.CommandListener):
         self.payloads = []
 
     def started(self, event):
-        print("started")
         self.payloads.append(event.command)
 
     def succeeded(self, event):
@@ -46,15 +45,10 @@ if __name__ == '__main__':
                     l = ""
                 except:
                     continue
-            collection = [i for i in locals().values() if type(i)
-                          ==Collection][0]
-            print(collection)
-            for payload in logger.payloads:
-                payload = SON([("explain", payload), ("verbosity", "queryPlanner")])
-                print(payload)
-                print(collection.database.command(payload))
-                logger.payloads = []
-
-
-
-    print(sys.argv)
+                collections = [i for i in locals().values() if type(i)
+                              == Collection]
+                for collection in collections:
+                    for payload in logger.payloads:
+                        payload = SON([("explain", payload), ("verbosity", "queryPlanner")])
+                        print(collection.database.command(payload))
+                        logger.payloads = []
