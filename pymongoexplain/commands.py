@@ -13,14 +13,20 @@
 # limitations under the License.
 
 
-import pymongo
-from bson.son import SON
+"""Classes for generating command payloads."""
+
+
 from typing import Union
+
+from bson.son import SON
+from pymongo.collection import Collection
 
 Document = Union[dict, SON]
 
 class BaseCommand():
     def __init__(self, dictionary):
+        if type(self) == BaseCommand:
+            raise NotImplementedError
         self.command_document = self.convert_to_camelcase(dictionary)
 
     def convert_to_camelcase(self, d: dict) -> dict:
@@ -48,7 +54,7 @@ class BaseCommand():
 
 
 class UpdateCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, filter, update,
+    def __init__(self, collection: Collection, filter, update,
                  kwargs):
         super().__init__(kwargs)
         self.command_name = "update"
@@ -63,7 +69,7 @@ class UpdateCommand(BaseCommand):
 
 
 class DistinctCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, key, filter, session,
+    def __init__(self, collection: Collection, key, filter, session,
                  kwargs):
         self.command_name = "distinct"
         self.collection = collection.name
@@ -74,7 +80,7 @@ class DistinctCommand(BaseCommand):
 
 
 class AggregateCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, pipeline, session,
+    def __init__(self, collection: Collection, pipeline, session,
                  cursor_options,
                  kwargs):
         self.command_name = "aggregate"
@@ -86,7 +92,7 @@ class AggregateCommand(BaseCommand):
 
 
 class CountCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, filter,
+    def __init__(self, collection: Collection, filter,
                  kwargs):
         self.command_name = "count"
         self.collection = collection.name
@@ -97,7 +103,7 @@ class CountCommand(BaseCommand):
 
 
 class FindCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection,
+    def __init__(self, collection: Collection,
                  kwargs):
         self.command_name = "find"
         self.collection = collection.name
@@ -108,7 +114,7 @@ class FindCommand(BaseCommand):
 
 
 class DeleteCommand(BaseCommand):
-    def __init__(self, collection: pymongo.collection, filter,
+    def __init__(self, collection: Collection, filter,
                  limit, collation, kwargs):
         super().__init__(kwargs)
         self.command_name = "delete"

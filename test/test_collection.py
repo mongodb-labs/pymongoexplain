@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from pymongo import MongoClient
-from pymongoexplain.explainable_collection import ExplainCollection
 import unittest
 
-import logging
-
+from pymongo import MongoClient
 from pymongo import monitoring
 from bson import Timestamp
+
+from pymongoexplain.explainable_collection import ExplainCollection
+
 
 class CommandLogger(monitoring.CommandListener):
     def started(self, event):
@@ -43,6 +42,7 @@ class TestExplainableCollection(unittest.TestCase):
                                  {"$set": {"reorder": True}})
         res = explain.update_one({"quantity": 1057, "category": "apparel"},
                                {"$set": {"reorder": True}})
+        print(res)
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
         for key in last_cmd_payload.keys():

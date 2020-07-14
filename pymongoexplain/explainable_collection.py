@@ -13,10 +13,14 @@
 # limitations under the License.
 
 
+from typing import Union, List
+
 import pymongo
 from bson.son import SON
-from typing import Union, List
-from .commands import *
+
+from .commands import AggregateCommand, FindCommand, CountCommand, \
+    UpdateCommand, DistinctCommand, DeleteCommand
+
 
 Document = Union[dict, SON]
 
