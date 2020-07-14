@@ -22,6 +22,10 @@ setup(
     url="https://github.com/mongodb-labs/pymongoexplain",
     keywords=["mongo", "mongodb", "pymongo"],
     test_suite="test",
+    entry_points={
+        'console_scripts': [
+            'pymongoexplain=pymongoexplain.cli_explain:cli_explain'],
+    },
     tests_require=["pymongo==3.10.1"],
     install_requires=['pymongo==3.10.1'],
     python_requires='>=3.5',
