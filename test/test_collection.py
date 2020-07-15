@@ -39,7 +39,7 @@ class TestExplainableCollection(unittest.TestCase):
         for key in ours.keys():
             if isinstance(ours[key], dict) or isinstance(ours[key], SON):
                 self._compare_command_dicts(ours[key], theirs[key])
-            elif type(ours[key]) == list:
+            elif isinstance(ours[key], list):
                 for i, j in zip(ours[key], theirs[key]):
                     if isinstance(i, dict) or isinstance(i,
                                                                  SON):
@@ -172,10 +172,7 @@ class TestExplainableCollection(unittest.TestCase):
             logger])
         collection = client.db.products
         explain = ExplainCollection(collection)
-        cursor = collection.find(filter={"status": "D"})
-        try:
-            next(cursor)
-        except StopIteration:
+        for _ in collection.find(filter={"status": "D"}):
             pass
         last_logger_payload = logger.cmd_payload
         res = explain.find(filter={"status": "D"})

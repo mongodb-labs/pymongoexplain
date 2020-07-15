@@ -37,16 +37,16 @@ class BaseCommand():
             if d[key] is None:
                 continue
             new_key = key
-            if "_" in key and key != "_id":
+            if "_" in key and key[0] != "_":
                 new_key = key.split("_")[0] + ''.join(
                     [i.capitalize() for i in key.split("_")[1:]])
-            if type(d[key]) == list:
+            if isinstance(d[key], list):
                 ret[new_key] = [self.convert_to_camelcase(i) for i in d[key]]
-            elif type(d[key]) == dict:
+            elif isinstance(d[key], dict):
                 ret[new_key] = self.convert_to_camelcase(d[key])
             else:
                 ret[new_key] = d[key]
-        return SON(ret)
+        return ret
 
     def get_SON(self):
         cmd = SON([(self.command_name, self.collection)])
