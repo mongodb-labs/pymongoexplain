@@ -29,10 +29,11 @@ class ExplainCollection():
         self.collection = collection
         self.last_cmd_payload = None
 
-    def _explain_command(self, command: Document):
-        explain_command = SON([("explain", command.get_SON())])
+    def _explain_command(self, command):
+        command_son = command.get_SON()
+        explain_command = SON([("explain", command_son)])
         explain_command["verbosity"] = "queryPlanner"
-        self.last_cmd_payload = command.get_SON()
+        self.last_cmd_payload = command_son
         return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
@@ -62,6 +63,8 @@ class ExplainCollection():
         return self._explain_command(command)
 
     def count_documents(self, filter: Document, session=None, **kwargs):
+        #kwargs["cursor"] = {}
+
         command = CountCommand(self.collection, filter,kwargs)
         return self._explain_command(command)
 
@@ -102,31 +105,16 @@ class ExplainCollection():
                                        max_await_time_ms})
         return self._explain_command(command)
 
-    def find(self, filter: Document = None, projection: list = None,
-             skip: int = 0, limit: int = 0, no_cursor_timeout: bool = False,
-             sort: Document = None, allow_partial_results: bool = False,
-             oplog_replay: bool = False, batch_size: int=0,
-             collation: Document = None, hint: Union[Document, str] = None,
-             max_time_ms: int = None, max: Document = None, min: Document =
-             None, return_key: bool = False,
-             show_record_id: bool = False, comment: str = None,
-             session:Document = None, **kwargs: Dict[str, Union[int, str,
-                                                                Document, bool]]):
+    def find(self, filter: Document = None,
+             **kwargs: Dict[str, Union[int, str,Document, bool]]):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"]
         command = FindCommand(self.collection,
                                 kwargs)
         return self._explain_command(command)
 
-    def find_one(self, filter: Document = None, projection: list = None,
-             skip: int = 0, limit: int = 0, no_cursor_timeout: bool = False,
-             sort: Document = None, allow_partial_results: bool = False,
-             oplog_replay: bool = False, batch_size: int=0,
-             collation: Document = None, hint: Union[Document, str] = None,
-             max_time_ms: int = None, max: Document = None, min: Document =
-             None, return_key: bool = False,
-             show_record_id: bool = False, comment: str = None,
-             session:Document = None, **kwargs: Dict[str, Union[int, str,
+    def find_one(self, filter: Document = None, **kwargs: Dict[str,
+                                                               Union[int, str,
                                                                 Document, bool]]):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"]
@@ -152,8 +140,7 @@ class ExplainCollection():
         kwargs["query"] = filter
         kwargs["fields"] = projection
         kwargs["sort"] = sort
-        kwargs["remove"] = False
-        kwargs["new"] = True
+        kwargs["new"] = False
         kwargs["update"] = replacement
 
         command = FindAndModifyCommand(self.collection,
@@ -167,8 +154,7 @@ class ExplainCollection():
         kwargs["query"] = filter
         kwargs["fields"] = projection
         kwargs["sort"] = sort
-        kwargs["remove"] = False
-        kwargs["upsert"] = True
+        kwargs["upsert"] = False
         kwargs["update"] = replacement
 
         command = FindAndModifyCommand(self.collection,

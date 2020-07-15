@@ -17,13 +17,14 @@ import unittest
 from pymongo import MongoClient
 from pymongo import monitoring
 from bson import Timestamp
+from bson.son import SON
 
-from pymongoexplain.explainable_collection import ExplainCollection
+from pymongoexplain.explainable_collection import ExplainCollection, Document
 
 
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
-        self.cmd_payload = None
+        self.cmd_payload = {}
     def started(self, event):
         self.cmd_payload = event.command
 
@@ -34,6 +35,27 @@ class CommandLogger(monitoring.CommandListener):
         pass
 
 class TestExplainableCollection(unittest.TestCase):
+    def _compare_command_dicts(self, ours, theirs):
+        try:
+            for key in ours.keys():
+                if isinstance(ours[key], dict) or isinstance(ours[key], SON):
+                    self._compare_command_dicts(ours[key], theirs[key])
+                elif type(ours[key]) == list:
+                    for i, j in zip(ours[key], theirs[key]):
+                        if isinstance(i, dict) or isinstance(i,
+                                                                     SON):
+                            self._compare_command_dicts(i, j)
+                        else:
+                            assert i == j
+                else:
+                    assert ours[key] == theirs.get(key, None)
+        except:
+            print("ours:", sorted(ours.items()))
+            print("theirs:", sorted([i for i in theirs.items() if ours.get(i[
+                                                                               0], None)
+            != None]))
+
+
     def test_update_one(self):
         logger = CommandLogger()
         client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
@@ -48,8 +70,7 @@ class TestExplainableCollection(unittest.TestCase):
         print(res)
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_update_many(self):
         logger = CommandLogger()
@@ -64,8 +85,7 @@ class TestExplainableCollection(unittest.TestCase):
                                 {"$set": {"reorder": True}})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_distinct(self):
         logger = CommandLogger()
@@ -78,8 +98,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.distinct("item.sku")
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_count_documents(self):
         logger = CommandLogger()
@@ -92,13 +111,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.count_documents({"ord_dt": {"$gt": 10}})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            try:
-                assert last_cmd_payload[key] == last_logger_payload.get(key,
-                                                                        None)
-
-            except:
-                print(last_cmd_payload, last_logger_payload)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_aggregate(self):
         logger = CommandLogger()
@@ -114,8 +127,7 @@ class TestExplainableCollection(unittest.TestCase):
                                                                  "$tags"}], None)
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload[key]
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_delete_one(self):
         logger = CommandLogger()
@@ -128,8 +140,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.delete_one({"status": "D"})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_delete_many(self):
         logger = CommandLogger()
@@ -142,8 +153,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.delete_many({"status": "D"})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_watch(self):
         logger = CommandLogger()
@@ -160,8 +170,7 @@ class TestExplainableCollection(unittest.TestCase):
                             batch_size=10, full_document="updateLookup")
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find(self):
         logger = CommandLogger()
@@ -169,13 +178,16 @@ class TestExplainableCollection(unittest.TestCase):
             logger])
         collection = client.db.products
         explain = ExplainCollection(collection)
-        collection.find(filter={"status": "D"})
+        cursor = collection.find(filter={"status": "D"})
+        try:
+            next(cursor)
+        except StopIteration:
+            pass
         last_logger_payload = logger.cmd_payload
         res = explain.find(filter={"status": "D"})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one(self):
         logger = CommandLogger()
@@ -188,8 +200,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.find_one()
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_delete(self):
         logger = CommandLogger()
@@ -202,8 +213,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.find_one_and_delete({"_id": "D"})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_replace(self):
         logger = CommandLogger()
@@ -216,8 +226,7 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.find_one_and_replace({'x': 1}, {'y': 1})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_update(self):
         logger = CommandLogger()
@@ -230,8 +239,8 @@ class TestExplainableCollection(unittest.TestCase):
         res = explain.find_one_and_update({'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        for key in last_cmd_payload.keys():
-            assert last_cmd_payload[key] == last_logger_payload.get(key, None)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
 
 if __name__ == '__main__':
     unittest.main()

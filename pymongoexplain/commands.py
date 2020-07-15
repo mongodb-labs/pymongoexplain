@@ -24,28 +24,29 @@ from pymongo.collection import Collection
 Document = Union[dict, SON]
 
 class BaseCommand():
-    def __init__(self, dictionary):
-        if type(self) == BaseCommand:
-            raise NotImplementedError
-        self.command_document = self.convert_to_camelcase(dictionary)
+    def __init__(self, command_name, collection):
+        self.command_document = {}
+        self.command_name = command_name
+        self.collection = collection
 
-    def convert_to_camelcase(self, d: dict) -> dict:
+    def convert_to_camelcase(self, d):
+        if not isinstance(d, dict):
+            return d
         ret = dict()
         for key in d.keys():
             if d[key] is None:
                 continue
             new_key = key
-            if "_" in key:
+            if "_" in key and key != "_id":
                 new_key = key.split("_")[0] + ''.join(
                     [i.capitalize() for i in key.split("_")[1:]])
             if type(d[key]) == list:
-                ret[new_key] = [self.convert_to_camelcase(i) for i in d[key]
-                                if type(i) == dict]
+                ret[new_key] = [self.convert_to_camelcase(i) for i in d[key]]
             elif type(d[key]) == dict:
                 ret[new_key] = self.convert_to_camelcase(d[key])
             else:
                 ret[new_key] = d[key]
-        return ret
+        return SON(ret)
 
     def get_SON(self):
         cmd = SON([(self.command_name, self.collection)])
@@ -56,9 +57,7 @@ class BaseCommand():
 class UpdateCommand(BaseCommand):
     def __init__(self, collection: Collection, filter, update,
                  kwargs):
-        super().__init__(kwargs)
-        self.command_name = "update"
-        self.collection = collection.name
+        super().__init__("update", collection.name)
         return_dictionary =  {"updates":[{"q": filter, "u": update}]}
         for key, value in self.command_document.items():
             if key == "bypassDocumentValidation":
@@ -66,71 +65,67 @@ class UpdateCommand(BaseCommand):
             else:
                 return_dictionary["updates"][0][key] = value
         self.command_document = return_dictionary
+        self.command_document = self.convert_to_camelcase(self.command_document)
+
 
 
 class DistinctCommand(BaseCommand):
     def __init__(self, collection: Collection, key, filter, session,
                  kwargs):
-        self.command_name = "distinct"
-        self.collection = collection.name
+        super().__init__("distinct", collection.name)
         self.command_document = {"key": key, "query": filter}
         for key, value in kwargs.items():
             self.command_document[key] = value
-        super().__init__(self.command_document)
+        self.command_document = self.convert_to_camelcase(self.command_document)
 
 
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: Collection, pipeline, session,
                  cursor_options,
                  kwargs):
-        self.command_name = "aggregate"
-        self.collection = collection.name
+        super().__init__("aggregate", collection.name)
         self.command_document = {"pipeline": pipeline, "cursor": cursor_options}
         for key, value in kwargs.items():
             self.command_document[key] = value
-        super().__init__(self.command_document)
+        self.command_document = self.convert_to_camelcase(self.command_document)
 
 
 class CountCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
                  kwargs):
-        self.command_name = "count"
-        self.collection = collection.name
+        super().__init__("count", collection.name)
         self.command_document = {"query": filter}
         for key, value in kwargs.items():
-            self.dictionary[key] = value
-        super().__init__(self.command_document)
+            self.command_document[key] = value
+        self.command_document = self.convert_to_camelcase(self.command_document)
+
 
 
 class FindCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
-        self.command_name = "find"
-        self.collection = collection.name
-        self.command_document={}
+        super().__init__("find", collection.name)
         for key, value in kwargs.items():
             self.command_document[key] = value
-        super().__init__(self.command_document)
+        self.convert_to_camelcase(self.command_document)
+        self.command_document = self.convert_to_camelcase(self.command_document)
+
 
 class FindAndModifyCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
-        self.command_name = "findAndModify"
-        self.collection = collection.name
-        self.command_document={}
+        super().__init__("findAndModify", collection.name)
         for key, value in kwargs.items():
             self.command_document[key] = value
-        super().__init__(self.command_document)
+        self.command_document = self.convert_to_camelcase(self.command_document)
 
 class DeleteCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
                  limit, collation, kwargs):
-        super().__init__(kwargs)
-        self.command_name = "delete"
-        self.collection = collection.name
-        return_dictionary = {"deletes": [{"q": filter, "limit": limit,
-                                         "collation": collation}]}
+        super().__init__("delete", collection.name)
+        self.command_document = {"deletes": [SON({"q": filter, "limit": limit})]}
+        for key, value in kwargs.items():
+            self.command_document[key] = value
+        self.command_document = self.convert_to_camelcase(self.command_document)
 
-        for key, value in self.command_document.items():
-            return_dictionary[key] = value
-        self.command_document = return_dictionary
+
