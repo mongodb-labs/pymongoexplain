@@ -112,6 +112,15 @@ class FindCommand(BaseCommand):
             self.command_document[key] = value
         super().__init__(self.command_document)
 
+class FindAndModifyCommand(BaseCommand):
+    def __init__(self, collection: Collection,
+                 kwargs):
+        self.command_name = "findAndModify"
+        self.collection = collection.name
+        self.command_document={}
+        for key, value in kwargs.items():
+            self.command_document[key] = value
+        super().__init__(self.command_document)
 
 class DeleteCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
