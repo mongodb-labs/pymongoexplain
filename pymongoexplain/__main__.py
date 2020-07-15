@@ -15,40 +15,20 @@
 
 from pymongo import monitoring, MongoClient
 from pymongo.collection import Collection
+from pymongo.common import BaseObject
 import sys
 from bson.son import SON
 
-class CommandLogger(monitoring.CommandListener):
-    def __init__(self):
-        self.payloads = []
+old_update_one = Collection.update_one
 
-    def started(self, event):
-        self.payloads.append(event.command)
-
-    def succeeded(self, event):
-        pass
-
-    def failed(self, event):
-        pass
+def update_one(self: Collection, filter, update, upsert=False,
+                   bypass_document_validation=False, collation=None,
+                   array_filters=None, session=None):
+        ret = old_update_one(self, filter, update)
+        print(ret)
+Collection.update_one = update_one
 
 if __name__ == '__main__':
-
     for file in sys.argv[1:]:
         with open(file) as f:
-            logger = CommandLogger()
-            monitoring.register(logger)
-            l = ""
-            for line in f.readlines():
-                l = l+line
-                try:
-                    exec(l)
-                    l = ""
-                except:
-                    continue
-                collections = [i for i in locals().values() if type(i)
-                              == Collection]
-                for collection in collections:
-                    for payload in logger.payloads:
-                        payload = SON([("explain", payload), ("verbosity", "queryPlanner")])
-                        print(collection.database.command(payload))
-                        logger.payloads = []
+            exec(f.read())
