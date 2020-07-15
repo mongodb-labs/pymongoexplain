@@ -36,24 +36,18 @@ class CommandLogger(monitoring.CommandListener):
 
 class TestExplainableCollection(unittest.TestCase):
     def _compare_command_dicts(self, ours, theirs):
-        try:
-            for key in ours.keys():
-                if isinstance(ours[key], dict) or isinstance(ours[key], SON):
-                    self._compare_command_dicts(ours[key], theirs[key])
-                elif type(ours[key]) == list:
-                    for i, j in zip(ours[key], theirs[key]):
-                        if isinstance(i, dict) or isinstance(i,
-                                                                     SON):
-                            self._compare_command_dicts(i, j)
-                        else:
-                            assert i == j
-                else:
-                    assert ours[key] == theirs.get(key, None)
-        except:
-            print("ours:", sorted(ours.items()))
-            print("theirs:", sorted([i for i in theirs.items() if ours.get(i[
-                                                                               0], None)
-            != None]))
+        for key in ours.keys():
+            if isinstance(ours[key], dict) or isinstance(ours[key], SON):
+                self._compare_command_dicts(ours[key], theirs[key])
+            elif type(ours[key]) == list:
+                for i, j in zip(ours[key], theirs[key]):
+                    if isinstance(i, dict) or isinstance(i,
+                                                                 SON):
+                        self._compare_command_dicts(i, j)
+                    else:
+                        assert i == j
+            else:
+                assert ours[key] == theirs.get(key, None)
 
 
     def test_update_one(self):
