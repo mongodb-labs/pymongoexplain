@@ -35,227 +35,150 @@ class CommandLogger(monitoring.CommandListener):
         pass
 
 class TestExplainableCollection(unittest.TestCase):
+    def setUp(self) -> None:
+        self.logger = CommandLogger()
+        self.client = MongoClient(serverSelectionTimeoutMS=1000,
+                                 event_listeners=[self.logger])
+        self.collection = self.client.db.products
+        self.explain = ExplainCollection(self.collection)
+
     def _compare_command_dicts(self, ours, theirs):
         for key in ours.keys():
-            if isinstance(ours[key], dict) or isinstance(ours[key], SON):
-                self._compare_command_dicts(ours[key], theirs[key])
-            elif isinstance(ours[key], list):
-                for i, j in zip(ours[key], theirs[key]):
-                    if isinstance(i, dict) or isinstance(i,
-                                                                 SON):
-                        self._compare_command_dicts(i, j)
-                    else:
-                        assert i == j
-            else:
-                assert ours[key] == theirs.get(key, None)
+            assert ours[key] == theirs[key]
 
 
     def test_update_one(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.update_one({"quantity": 1057, "category": "apparel"},
+        self.collection.update_one({"quantity": 1057, "category": "apparel"},
                                  {"$set": {"reorder": True}})
-        last_logger_payload = logger.cmd_payload
-        res = explain.update_one({"quantity": 1057, "category": "apparel"},
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.update_one({"quantity": 1057, "category": "apparel"},
                                {"$set": {"reorder": True}})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_update_many(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.update_many({"quantity": 1057, "category": "apparel"},
+        self.collection.update_many({"quantity": 1057, "category": "apparel"},
                                   {"$set": {"reorder": True}})
-        last_logger_payload = logger.cmd_payload
-        res = explain.update_many({"quantity": 1057, "category": "apparel"},
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.update_many({"quantity": 1057, "category": "apparel"},
                                 {"$set": {"reorder": True}})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_distinct(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.distinct("item.sku")
-        last_logger_payload = logger.cmd_payload
-        res = explain.distinct("item.sku")
+        self.collection.distinct("item.sku")
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.distinct("item.sku")
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_count_documents(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.count_documents({"ord_dt": {"$gt": 10}})
-        last_logger_payload = logger.cmd_payload
-        res = explain.count_documents({"ord_dt": {"$gt": 10}})
+        self.collection.count_documents({"ord_dt": {"$gt": 10}})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.count_documents({"ord_dt": {"$gt": 10}})
         #self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_aggregate(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.aggregate([{"$project": {"tags": 1}}, {"$unwind":
+        self.collection.aggregate([{"$project": {"tags": 1}}, {"$unwind":
                                                                  "$tags"}],
                                 None)
-        last_logger_payload = logger.cmd_payload
-        res = explain.aggregate([{"$project": {"tags": 1}}, {"$unwind":
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.aggregate([{"$project": {"tags": 1}}, {"$unwind":
                                                                  "$tags"}], None)
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_delete_one(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.delete_one({"status": "D"})
-        last_logger_payload = logger.cmd_payload
-        res = explain.delete_one({"status": "D"})
+        self.collection.delete_one({"status": "D"})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.delete_one({"status": "D"})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_delete_many(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.delete_many({"status": "D"})
-        last_logger_payload = logger.cmd_payload
-        res = explain.delete_many({"status": "D"})
+        self.collection.delete_many({"status": "D"})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.delete_many({"status": "D"})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+    @unittest.skip("Travis does not have replica sets set up yet")
     def test_watch(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        res = explain.watch()
+        res = self.explain.watch()
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
-        collection.watch(pipeline=[{"$project": {"tags": 1}}],
+        self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
                                batch_size=10, full_document="updateLookup")
-        last_logger_payload = logger.cmd_payload
-        res = explain.watch(pipeline=[{"$project": {"tags": 1}}],
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
                             batch_size=10, full_document="updateLookup")
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        for _ in collection.find(filter={"status": "D"}):
+        for _ in self.collection.find(filter={"status": "D"}):
             pass
-        last_logger_payload = logger.cmd_payload
-        res = explain.find(filter={"status": "D"})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find(filter={"status": "D"})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.find_one()
-        last_logger_payload = logger.cmd_payload
-        res = explain.find_one()
+        self.collection.find_one()
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one()
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_delete(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.find_one_and_delete({"_id": "D"})
-        last_logger_payload = logger.cmd_payload
-        res = explain.find_one_and_delete({"_id": "D"})
+        self.collection.find_one_and_delete({"_id": "D"})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one_and_delete({"_id": "D"})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_replace(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.find_one_and_replace({'x': 1}, {'y': 1})
-        last_logger_payload = logger.cmd_payload
-        res = explain.find_one_and_replace({'x': 1}, {'y': 1})
+        self.collection.find_one_and_replace({'x': 1}, {'y': 1})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one_and_replace({'x': 1}, {'y': 1})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_find_one_and_update(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.find_one_and_update({'_id': 665}, {'$inc': {'count': 1}, "$set": {'done': True}})
-        last_logger_payload = logger.cmd_payload
-        res = explain.find_one_and_update({'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
+        self.collection.find_one_and_update({'_id': 665}, {'$inc': {'count': 1}, "$set": {'done': True}})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one_and_update({'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_replace_one(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.replace_one({'x': 1}, {'y': 1},
+        self.collection.replace_one({'x': 1}, {'y': 1},
                                bypass_document_validation=True)
-        last_logger_payload = logger.cmd_payload
-        res = explain.replace_one({'x': 1}, {'y': 1}, bypass_document_validation=True)
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.replace_one({'x': 1}, {'y': 1}, bypass_document_validation=True)
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_estimated_document_count(self):
-        logger = CommandLogger()
-        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
-            logger])
-        collection = client.db.products
-        explain = ExplainCollection(collection)
-        collection.estimated_document_count()
-        last_logger_payload = logger.cmd_payload
-        res = explain.estimated_document_count()
+        self.collection.estimated_document_count()
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.estimated_document_count()
         self.assertIn("queryPlanner", res)
-        last_cmd_payload = explain.last_cmd_payload
+        last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
 

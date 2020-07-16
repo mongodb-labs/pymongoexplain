@@ -41,6 +41,7 @@ class ExplainCollection():
                    session=None, **kwargs):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
+        kwargs["multi"] = False
         if bypass_document_validation == False:
             del kwargs["bypass_document_validation"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
