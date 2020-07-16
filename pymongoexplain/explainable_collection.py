@@ -74,9 +74,10 @@ class ExplainCollection():
     def count_documents(self, filter: Document, session=None,
                                  **kwargs):
 
-        command = AggregateCommand(self.collection, [{'$match': {
-            'ord_dt': filter}}, {'$group': {'n': {'$sum': 1}, '_id': 1}}],
-                                   session, {}, kwargs)
+        command = AggregateCommand(self.collection, [{'$match': filter},
+                                                      {'$group': {'n': {'$sum': 1}, '_id': 1}}],
+                                   session, {}, kwargs,
+                                   exclude_keys=filter.keys())
         return self._explain_command(command)
 
     def delete_one(self, filter: Document, collation=None, session=None,

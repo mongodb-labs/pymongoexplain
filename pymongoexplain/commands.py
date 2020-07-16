@@ -29,21 +29,27 @@ class BaseCommand():
         self.command_name = command_name
         self.collection = collection
 
-    def convert_to_camelcase(self, d):
+    def convert_to_camelcase(self, d, exclude_keys=[]):
         if not isinstance(d, dict):
             return d
         ret = dict()
         for key in d.keys():
             if d[key] is None:
                 continue
+            if key in exclude_keys:
+                ret[key] = d[key]
+                continue
             new_key = key
             if "_" in key and key[0] != "_":
                 new_key = key.split("_")[0] + ''.join(
                     [i.capitalize() for i in key.split("_")[1:]])
             if isinstance(d[key], list):
-                ret[new_key] = [self.convert_to_camelcase(i) for i in d[key]]
+                ret[new_key] = [self.convert_to_camelcase(i,
+                                                          exclude_keys=exclude_keys)
+                                for i in d[key]]
             elif isinstance(d[key], dict):
-                ret[new_key] = self.convert_to_camelcase(d[key])
+                ret[new_key] = self.convert_to_camelcase(d[key],
+                                                         exclude_keys=exclude_keys)
             else:
                 ret[new_key] = d[key]
         return ret
@@ -81,12 +87,14 @@ class DistinctCommand(BaseCommand):
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: Collection, pipeline, session,
                  cursor_options,
-                 kwargs):
+                 kwargs, exclude_keys = []):
         super().__init__("aggregate", collection.name)
         self.command_document = {"pipeline": pipeline, "cursor": cursor_options}
         for key, value in kwargs.items():
             self.command_document[key] = value
-        self.command_document = self.convert_to_camelcase(self.command_document)
+
+        self.command_document = self.convert_to_camelcase(
+            self.command_document, exclude_keys=exclude_keys)
 
 
 class CountCommand(BaseCommand):
