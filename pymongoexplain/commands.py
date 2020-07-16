@@ -73,6 +73,7 @@ class DistinctCommand(BaseCommand):
     def command_name(self):
         return "distinct"
 
+
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: Collection, pipeline, session,
                  cursor_options,

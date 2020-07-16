@@ -40,11 +40,12 @@ class TestExplainableCollection(unittest.TestCase):
         self.client = MongoClient(serverSelectionTimeoutMS=1000,
                                  event_listeners=[self.logger])
         self.collection = self.client.db.products
+        self.collection.insert_one({'x': 1})
         self.explain = ExplainCollection(self.collection)
 
     def _compare_command_dicts(self, ours, theirs):
         for key in ours.keys():
-            assert ours[key] == theirs[key]
+            self.assertEqual(ours[key], theirs[key])
 
 
     def test_update_one(self):
