@@ -17,7 +17,10 @@ from pymongo.collection import Collection
 from .explainable_collection import ExplainCollection
 
 import sys
+import logging
 
+FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 old_function_names = ["update_one", "replace_one", "update_many", "delete_one",
                       "delete_many", "aggregate", "watch", "find", "find_one",
@@ -29,7 +32,7 @@ old_functions = [getattr(Collection, i) for i in old_function_names]
 
 def make_func(old_func, old_func_name):
     def new_func(self: Collection, *args, **kwargs):
-        print(getattr(ExplainCollection(self), old_func_name)(*args,
+        logging.info(getattr(ExplainCollection(self), old_func_name)(*args,
                                                               **kwargs))
         return old_func(self, *args, **kwargs)
     return new_func
