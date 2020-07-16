@@ -13,15 +13,12 @@
 # limitations under the License.
 
 
-from pymongo import monitoring, MongoClient
-from pymongo.collection import Collection, ReturnDocument
-from pymongo.cursor import CursorType
-from pymongo.common import BaseObject
+from pymongo.collection import Collection
 from .explainable_collection import ExplainCollection
-import sys
-from bson.son import SON
 
-#do some monkey patching to run explain before the actual command
+import sys
+
+
 old_function_names = ["update_one", "replace_one", "update_many", "delete_one",
                       "delete_many", "aggregate", "watch", "find", "find_one",
                       "find_one_and_delete", "find_one_and_replace",
