@@ -21,7 +21,6 @@ from bson.son import SON
 from .commands import AggregateCommand, FindCommand, CountCommand, \
     UpdateCommand, DistinctCommand, DeleteCommand, FindAndModifyCommand
 
-
 Document = Union[dict, SON]
 
 class ExplainCollection():
@@ -42,6 +41,8 @@ class ExplainCollection():
                    session=None, **kwargs):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
+        if bypass_document_validation == False:
+            del kwargs["bypass_document_validation"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
@@ -50,6 +51,8 @@ class ExplainCollection():
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
         kwargs["multi"] = True
+        if bypass_document_validation == False:
+            del kwargs["bypass_document_validation"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
@@ -156,9 +159,24 @@ class ExplainCollection():
         kwargs["sort"] = sort
         kwargs["upsert"] = False
         kwargs["update"] = replacement
+        kwargs["session"] = session
 
         command = FindAndModifyCommand(self.collection,
                                        kwargs)
+        return self._explain_command(command)
+
+    def replace_one(self, filter: Document, replacement: Document,
+                    upsert=False, bypass_document_validation=False,
+                    collation=None, session=None, **kwargs):
+        kwargs.update(locals())
+        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs[
+            "replacement"]
+        kwargs["multi"] = False
+        if bypass_document_validation == False:
+            del kwargs["bypass_document_validation"]
+        update = replacement
+        command = UpdateCommand(self.collection, filter, update, kwargs)
+
         return self._explain_command(command)
 
 

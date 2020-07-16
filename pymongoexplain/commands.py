@@ -58,15 +58,15 @@ class UpdateCommand(BaseCommand):
     def __init__(self, collection: Collection, filter, update,
                  kwargs):
         super().__init__("update", collection.name)
-        return_dictionary =  {"updates":[{"q": filter, "u": update}]}
-        for key, value in self.command_document.items():
-            if key == "bypassDocumentValidation":
-                return_dictionary[key] = value
+        return_document = {"updates":[{"q": filter, "u": update}]}
+        print(kwargs)
+        for key in kwargs:
+            value = kwargs[key]
+            if key == "bypass_document_validation":
+                return_document[key] = value
             else:
-                return_dictionary["updates"][0][key] = value
-        self.command_document = return_dictionary
-        self.command_document = self.convert_to_camelcase(self.command_document)
-
+                return_document["updates"][0][key] = value
+        self.command_document = self.convert_to_camelcase(return_document)
 
 
 class DistinctCommand(BaseCommand):
@@ -107,7 +107,6 @@ class FindCommand(BaseCommand):
         super().__init__("find", collection.name)
         for key, value in kwargs.items():
             self.command_document[key] = value
-        self.convert_to_camelcase(self.command_document)
         self.command_document = self.convert_to_camelcase(self.command_document)
 
 

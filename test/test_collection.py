@@ -232,6 +232,21 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+    def test_replace_one(self):
+        logger = CommandLogger()
+        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
+            logger])
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        collection.replace_one({'x': 1}, {'y': 1})
+        last_logger_payload = logger.cmd_payload
+        print(last_logger_payload)
+        res = explain.replace_one({'x': 1}, {'y': 1})
+        self.assertIn("queryPlanner", res)
+        last_cmd_payload = explain.last_cmd_payload
+        print(last_cmd_payload)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
 
 if __name__ == '__main__':
     unittest.main()
