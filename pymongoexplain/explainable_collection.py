@@ -65,8 +65,14 @@ class ExplainCollection():
                                    {},kwargs)
         return self._explain_command(command)
 
-    def count_documents(self, filter: Document, session=None, **kwargs):
-        #kwargs["cursor"] = {}
+    def estimated_document_count(self,
+                                 **kwargs):
+
+        command = CountCommand(self.collection, None, kwargs)
+        return self._explain_command(command)
+
+    def count_documents(self, filter: Document, session=None,
+                                 **kwargs):
 
         command = CountCommand(self.collection, filter,kwargs)
         return self._explain_command(command)
@@ -172,7 +178,7 @@ class ExplainCollection():
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs[
             "replacement"]
         kwargs["multi"] = False
-        if bypass_document_validation == False:
+        if not bypass_document_validation:
             del kwargs["bypass_document_validation"]
         update = replacement
         command = UpdateCommand(self.collection, filter, update, kwargs)

@@ -59,7 +59,6 @@ class UpdateCommand(BaseCommand):
                  kwargs):
         super().__init__("update", collection.name)
         return_document = {"updates":[{"q": filter, "u": update}]}
-        print(kwargs)
         for key in kwargs:
             value = kwargs[key]
             if key == "bypass_document_validation":

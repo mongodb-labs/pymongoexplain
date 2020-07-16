@@ -61,7 +61,6 @@ class TestExplainableCollection(unittest.TestCase):
         last_logger_payload = logger.cmd_payload
         res = explain.update_one({"quantity": 1057, "category": "apparel"},
                                {"$set": {"reorder": True}})
-        print(res)
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
@@ -102,6 +101,7 @@ class TestExplainableCollection(unittest.TestCase):
         explain = ExplainCollection(collection)
         collection.count_documents({"ord_dt": {"$gt": 10}})
         last_logger_payload = logger.cmd_payload
+        print(last_logger_payload)
         res = explain.count_documents({"ord_dt": {"$gt": 10}})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
@@ -238,13 +238,25 @@ class TestExplainableCollection(unittest.TestCase):
             logger])
         collection = client.db.products
         explain = ExplainCollection(collection)
-        collection.replace_one({'x': 1}, {'y': 1})
+        collection.replace_one({'x': 1}, {'y': 1},
+                               bypass_document_validation=True)
         last_logger_payload = logger.cmd_payload
-        print(last_logger_payload)
-        res = explain.replace_one({'x': 1}, {'y': 1})
+        res = explain.replace_one({'x': 1}, {'y': 1}, bypass_document_validation=True)
         self.assertIn("queryPlanner", res)
         last_cmd_payload = explain.last_cmd_payload
-        print(last_cmd_payload)
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
+    def test_estimated_document_count(self):
+        logger = CommandLogger()
+        client = MongoClient(serverSelectionTimeoutMS=1000, event_listeners=[
+            logger])
+        collection = client.db.products
+        explain = ExplainCollection(collection)
+        collection.estimated_document_count()
+        last_logger_payload = logger.cmd_payload
+        res = explain.estimated_document_count()
+        self.assertIn("queryPlanner", res)
+        last_cmd_payload = explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
 
