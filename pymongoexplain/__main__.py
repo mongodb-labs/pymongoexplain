@@ -39,8 +39,7 @@ def make_func(old_func, old_func_name):
 
 
 for old_func, old_func_name in zip(old_functions, old_function_names):
-    setattr(Collection, old_func_name, make_func(old_func,
-                                                 old_func_name))
+    setattr(Collection, old_func_name, make_func(old_func, old_func_name))
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
