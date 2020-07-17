@@ -32,8 +32,8 @@ old_functions = [getattr(Collection, i) for i in old_function_names]
 
 def make_func(old_func, old_func_name):
     def new_func(self: Collection, *args, **kwargs):
-        logging.info("%s explain response: %s"% (old_func_name, getattr(
-            ExplainCollection(self),old_func_name)(*args, **kwargs)))
+        res = getattr(ExplainCollection(self),old_func_name)(*args, **kwargs)
+        logging.info("%s explain response: %s", old_func_name, res)
         return old_func(self, *args, **kwargs)
     return new_func
 
