@@ -13,48 +13,41 @@
 # limitations under the License.
 
 
-from pymongo import monitoring, MongoClient
 from pymongo.collection import Collection
+from .explainable_collection import ExplainCollection
+
 import sys
-from bson.son import SON
+import logging
 
-class CommandLogger(monitoring.CommandListener):
-    def __init__(self):
-        self.payloads = []
 
-    def started(self, event):
-        print("started")
-        self.payloads.append(event.command)
+'''This module allows for pymongo scripts to run with with pymongoexplain, 
+explaining each command as it occurs.
+'''
 
-    def succeeded(self, event):
-        pass
 
-    def failed(self, event):
-        pass
+FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.INFO)
+
+old_function_names = ["update_one", "replace_one", "update_many", "delete_one",
+                      "delete_many", "aggregate", "watch", "find", "find_one",
+                      "find_one_and_delete", "find_one_and_replace",
+                      "find_one_and_update", "count_documents",
+                      "estimated_document_count", "distinct"]
+old_functions = [getattr(Collection, i) for i in old_function_names]
+
+
+def make_func(old_func, old_func_name):
+    def new_func(self: Collection, *args, **kwargs):
+        res = getattr(ExplainCollection(self),old_func_name)(*args, **kwargs)
+        logging.info("%s explain response: %s", old_func_name, res)
+        return old_func(self, *args, **kwargs)
+    return new_func
+
+
+for old_func, old_func_name in zip(old_functions, old_function_names):
+    setattr(Collection, old_func_name, make_func(old_func, old_func_name))
 
 if __name__ == '__main__':
-
     for file in sys.argv[1:]:
         with open(file) as f:
-            logger = CommandLogger()
-            monitoring.register(logger)
-            l = ""
-            for line in f.readlines():
-                l = l+line
-                try:
-                    exec(l)
-                    l = ""
-                except:
-                    continue
-            collection = [i for i in locals().values() if type(i)
-                          ==Collection][0]
-            print(collection)
-            for payload in logger.payloads:
-                payload = SON([("explain", payload), ("verbosity", "queryPlanner")])
-                print(payload)
-                print(collection.database.command(payload))
-                logger.payloads = []
-
-
-
-    print(sys.argv)
+            exec(f.read())
