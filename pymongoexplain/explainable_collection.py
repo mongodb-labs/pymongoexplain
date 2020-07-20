@@ -93,6 +93,7 @@ class ExplainCollection():
                                                             Document,
                                                       bool]]):
         limit = 0
+        kwargs["session"] = session
         command = DeleteCommand(self.collection, filter, limit, collation,
         kwargs)
         return self._explain_command(command)
@@ -142,6 +143,8 @@ class ExplainCollection():
         kwargs["fields"] = projection
         kwargs["sort"] = sort
         kwargs["remove"] = True
+        kwargs["session"] = session
+
         command = FindAndModifyCommand(self.collection,
                                        kwargs)
         return self._explain_command(command)
@@ -155,7 +158,7 @@ class ExplainCollection():
         kwargs["sort"] = sort
         kwargs["new"] = False
         kwargs["update"] = replacement
-
+        kwargs["session"] = session
         command = FindAndModifyCommand(self.collection,
                                        kwargs)
         return self._explain_command(command)
