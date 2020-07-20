@@ -19,6 +19,12 @@ from .explainable_collection import ExplainCollection
 import sys
 import logging
 
+
+'''This module allows for pymongo scripts to run with with pymongoexplain, 
+explaining each command as it occurs.
+'''
+
+
 FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.INFO)
 
