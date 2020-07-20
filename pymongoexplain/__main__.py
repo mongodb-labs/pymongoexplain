@@ -18,6 +18,7 @@ from .explainable_collection import ExplainCollection
 
 import sys
 import logging
+import argparse
 
 
 '''This module allows for pymongo scripts to run with with pymongoexplain, 
@@ -48,6 +49,13 @@ for old_func, old_func_name in zip(old_functions, old_function_names):
     setattr(Collection, old_func_name, make_func(old_func, old_func_name))
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("inputs", action="store", nargs="+")
+    parser.add_argument("--arg", "--arg", help="add script to explain",
+                        action="store", nargs="+")
+
+    args = parser.parse_args()
+    argv = args.inputs+args.arg
+    for file in argv:
         with open(file) as f:
             exec(f.read())
