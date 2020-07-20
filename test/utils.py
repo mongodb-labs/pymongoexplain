@@ -48,6 +48,8 @@ from test import (client_context,
                   db_user,
                   db_pwd)
 
+_SENSITIVE_COMMANDS.add("explain")
+
 if sys.version_info[0] < 3:
     # Python 2.7, use our backport.
     from test.barrier import Barrier

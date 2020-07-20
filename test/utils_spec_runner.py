@@ -1,4 +1,4 @@
-# Copyright 2019-present MongoDB, Inc.
+# Copyright 2020-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,20 @@
 import copy
 import sys
 
+from pymongoexplain.explainable_collection import ExplainCollection, Document
+from pymongo import monitoring
+
+class CommandLogger(monitoring.CommandListener):
+    def __init__(self):
+        self.cmd_payload = {}
+    def started(self, event):
+        self.cmd_payload = event.command
+
+    def succeeded(self, event):
+        pass
+
+    def failed(self, event):
+        pass
 
 from bson import decode, encode
 from bson.binary import Binary, STANDARD
@@ -248,6 +262,12 @@ class SpecRunner(IntegrationTest):
 
         return dict(opts)
 
+    def _compare_command_dicts(self, ours, theirs):
+        print(ours)
+        print(theirs)
+        for key in ours.keys():
+            self.assertEqual(ours[key], theirs[key])
+
     def run_operation(self, sessions, collection, operation):
         original_collection = collection
         name = camel_to_snake(operation['name'])
@@ -287,6 +307,9 @@ class SpecRunner(IntegrationTest):
         self.parse_options(arguments)
 
         cmd = getattr(obj, name)
+        wrapped_collection = ExplainCollection(obj)
+        explain_cmd = getattr(wrapped_collection, name)
+
 
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
@@ -344,7 +367,10 @@ class SpecRunner(IntegrationTest):
                 arguments[c2s] = arguments.pop(arg_name)
 
         result = cmd(**dict(arguments))
-
+        cmd_payload = self.command_logger.cmd_payload
+        explain_result = explain_cmd(**dict(arguments))
+        self._compare_command_dicts(wrapped_collection.last_cmd_payload,
+                                    cmd_payload)
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
                 # Read from the primary to ensure causal consistency.
@@ -518,6 +544,7 @@ class SpecRunner(IntegrationTest):
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
         listener = OvertCommandListener()
+        self.command_logger = CommandLogger()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test['clientOptions'])
         # MMAPv1 does not support retryable writes.
@@ -527,9 +554,11 @@ class SpecRunner(IntegrationTest):
         use_multi_mongos = test['useMultipleMongoses']
         if client_context.is_mongos and use_multi_mongos:
             client = rs_client(client_context.mongos_seeds(),
-                               event_listeners=[listener], **client_options)
+                               event_listeners=[listener, self.command_logger],
+                               **client_options)
         else:
-            client = rs_client(event_listeners=[listener], **client_options)
+            client = rs_client(event_listeners=[listener, self.command_logger],
+                               **client_options)
         self.listener = listener
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
