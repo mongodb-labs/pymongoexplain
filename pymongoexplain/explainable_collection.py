@@ -13,14 +13,13 @@
 # limitations under the License.
 
 
-from typing import Union, List
+from typing import Union, List, Dict
 
 import pymongo
 from bson.son import SON
 
 from .commands import AggregateCommand, FindCommand, CountCommand, \
-    UpdateCommand, DistinctCommand, DeleteCommand
-
+    UpdateCommand, DistinctCommand, DeleteCommand, FindAndModifyCommand
 
 Document = Union[dict, SON]
 
@@ -29,10 +28,11 @@ class ExplainCollection():
         self.collection = collection
         self.last_cmd_payload = None
 
-    def _explain_command(self, command: Document):
-        explain_command = SON([("explain", command.get_SON())])
+    def _explain_command(self, command):
+        command_son = command.get_SON()
+        explain_command = SON([("explain", command_son)])
         explain_command["verbosity"] = "queryPlanner"
-        self.last_cmd_payload = explain_command
+        self.last_cmd_payload = command_son
         return self.collection.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
@@ -41,6 +41,9 @@ class ExplainCollection():
                    session=None, **kwargs):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
+        kwargs["multi"] = False
+        if bypass_document_validation == False:
+            del kwargs["bypass_document_validation"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
@@ -49,6 +52,8 @@ class ExplainCollection():
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
         kwargs["multi"] = True
+        if bypass_document_validation == False:
+            del kwargs["bypass_document_validation"]
         command = UpdateCommand(self.collection, filter, update, kwargs)
         return self._explain_command(command)
 
@@ -61,8 +66,19 @@ class ExplainCollection():
                                    {},kwargs)
         return self._explain_command(command)
 
-    def count_documents(self, filter: Document, session=None, **kwargs):
-        command = CountCommand(self.collection, filter,kwargs)
+    def estimated_document_count(self,
+                                 **kwargs):
+
+        command = CountCommand(self.collection, None, kwargs)
+        return self._explain_command(command)
+
+    def count_documents(self, filter: Document, session=None,
+                                 **kwargs):
+
+        command = AggregateCommand(self.collection, [{'$match': filter},
+                                                      {'$group': {'n': {'$sum': 1}, '_id': 1}}],
+                                   session, {}, kwargs,
+                                   exclude_keys=filter.keys())
         return self._explain_command(command)
 
     def delete_one(self, filter: Document, collation=None, session=None,
@@ -73,8 +89,11 @@ class ExplainCollection():
         return self._explain_command(command)
 
     def delete_many(self, filter: Document, collation=None,
-                    session=None, **kwargs):
+                    session=None, **kwargs: Dict[str, Union[int, str,
+                                                            Document,
+                                                      bool]]):
         limit = 0
+        kwargs["session"] = session
         command = DeleteCommand(self.collection, filter, limit, collation,
         kwargs)
         return self._explain_command(command)
@@ -100,20 +119,79 @@ class ExplainCollection():
                                        max_await_time_ms})
         return self._explain_command(command)
 
-    def find(self, filter: Document = None, projection: list = None,
-             skip: int = 0, limit: int = 0, no_cursor_timeout: bool = False,
-             sort: Document = None, allow_partial_results: bool = False,
-             oplog_replay: bool = False, batch_size: int=0,
-             collation: Document = None, hint: Union[Document, str] = None,
-             max_time_ms: int = None, max: Document = None, min: Document =
-             None, return_key: bool = False,
-             show_record_id: bool = False, comment: str = None,
-             session:Document = None, **kwargs: Union[int, str, Document,
-                                                      bool]):
+    def find(self, filter: Document = None,
+             **kwargs: Dict[str, Union[int, str,Document, bool]]):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"]
         command = FindCommand(self.collection,
                                 kwargs)
         return self._explain_command(command)
+
+    def find_one(self, filter: Document = None, **kwargs: Dict[str,
+                                                               Union[int, str,
+                                                                Document, bool]]):
+        kwargs.update(locals())
+        del kwargs["self"], kwargs["kwargs"]
+        kwargs["limit"] = 1
+        command = FindCommand(self.collection, kwargs)
+        return self._explain_command(command)
+
+    def find_one_and_delete(self, filter: Document, projection: list = None,
+                            sort: Document=None, session=None,
+                        **kwargs):
+        kwargs["query"] = filter
+        kwargs["fields"] = projection
+        kwargs["sort"] = sort
+        kwargs["remove"] = True
+        kwargs["session"] = session
+
+        command = FindAndModifyCommand(self.collection,
+                                       kwargs)
+        return self._explain_command(command)
+
+    def find_one_and_replace(self, filter: Document, replacement: Document,
+                            projection: list = None, sort=None,
+                             return_document=pymongo.ReturnDocument.BEFORE,
+                             session=None, **kwargs):
+        kwargs["query"] = filter
+        kwargs["fields"] = projection
+        kwargs["sort"] = sort
+        kwargs["new"] = False
+        kwargs["update"] = replacement
+        kwargs["session"] = session
+        command = FindAndModifyCommand(self.collection,
+                                       kwargs)
+        return self._explain_command(command)
+
+    def find_one_and_update(self, filter: Document, replacement: Document,
+                            projection: list = None, sort=None,
+                             return_document=pymongo.ReturnDocument.BEFORE,
+                             session=None, **kwargs):
+        kwargs["query"] = filter
+        kwargs["fields"] = projection
+        kwargs["sort"] = sort
+        kwargs["upsert"] = False
+        kwargs["update"] = replacement
+        kwargs["session"] = session
+
+        command = FindAndModifyCommand(self.collection,
+                                       kwargs)
+        return self._explain_command(command)
+
+    def replace_one(self, filter: Document, replacement: Document,
+                    upsert=False, bypass_document_validation=False,
+                    collation=None, session=None, **kwargs):
+        kwargs.update(locals())
+        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs[
+            "replacement"]
+        kwargs["multi"] = False
+        if not bypass_document_validation:
+            del kwargs["bypass_document_validation"]
+        update = replacement
+        command = UpdateCommand(self.collection, filter, update, kwargs)
+
+        return self._explain_command(command)
+
+
 
 
