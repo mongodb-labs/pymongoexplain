@@ -50,12 +50,13 @@ for old_func, old_func_name in zip(old_functions, old_function_names):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("inputs", action="store", nargs="+")
-    parser.add_argument("--arg", "--arg", help="add script to explain",
+    parser.add_argument("inputs", action="store", nargs=1)
+    parser.add_argument("--arg", "--arg", help="add arguments to explained "
+                                               "script",
                         action="store", nargs="+")
 
     args = parser.parse_args()
-    argv = args.inputs+args.arg
-    for file in argv:
+    for file in args.inputs:
         with open(file) as f:
+            sys.argv = [file]+args.arg
             exec(f.read())
