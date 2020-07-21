@@ -53,7 +53,7 @@ class UpdateCommand(BaseCommand):
             value = kwargs[key]
             if key == "bypass_document_validation":
                 return_document[key] = value
-            elif key == "hint":
+            elif key == "hint" and value != {}:
                 return_document["updates"][0]["hint"] = value if \
                     isinstance(value, str) else SON(value)
             else:
