@@ -16,6 +16,7 @@
 from typing import Union, List, Dict
 
 import pymongo
+from pymongo.collection import Collection
 from bson.son import SON
 
 from .commands import AggregateCommand, FindCommand, CountCommand, \
@@ -23,17 +24,21 @@ from .commands import AggregateCommand, FindCommand, CountCommand, \
 
 Document = Union[dict, SON]
 
+
 class ExplainCollection():
-    def __init__(self, collection):
-        self.collection = collection
+    def __init__(self, collection_object):
+        self.collection_object = collection_object
         self.last_cmd_payload = None
 
     def _explain_command(self, command):
         command_son = command.get_SON()
+        if command_son == {}:
+            self.last_cmd_payload = {}
+            return {}
         explain_command = SON([("explain", command_son)])
         explain_command["verbosity"] = "queryPlanner"
         self.last_cmd_payload = command_son
-        return self.collection.database.command(explain_command)
+        return self.collection_object.database.command(explain_command)
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
@@ -44,7 +49,7 @@ class ExplainCollection():
         kwargs["multi"] = False
         if bypass_document_validation == False:
             del kwargs["bypass_document_validation"]
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+        command = UpdateCommand(self.collection_object, filter, update, kwargs)
         return self._explain_command(command)
 
     def update_many(self, filter: Document, update: Document, upsert=False,
@@ -54,28 +59,28 @@ class ExplainCollection():
         kwargs["multi"] = True
         if bypass_document_validation == False:
             del kwargs["bypass_document_validation"]
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+        command = UpdateCommand(self.collection_object, filter, update, kwargs)
         return self._explain_command(command)
 
     def distinct(self, key: str, filter: Document=None, session=None, **kwargs):
-        command = DistinctCommand(self.collection, key, filter, session, kwargs)
+        command = DistinctCommand(self.collection_object, key, filter, session, kwargs)
         return self._explain_command(command)
 
     def aggregate(self, pipeline: List[Document], session=None, **kwargs):
-        command = AggregateCommand(self.collection, pipeline, session,
-                                   {},kwargs)
+        command = AggregateCommand(self.collection_object, pipeline, session,
+                                   {}, kwargs)
         return self._explain_command(command)
 
     def estimated_document_count(self,
                                  **kwargs):
 
-        command = CountCommand(self.collection, None, kwargs)
+        command = CountCommand(self.collection_object, None, kwargs)
         return self._explain_command(command)
 
     def count_documents(self, filter: Document, session=None,
                                  **kwargs):
 
-        command = AggregateCommand(self.collection, [{'$match': filter},
+        command = AggregateCommand(self.collection_object, [{'$match': filter},
                                                       {'$group': {'n': {'$sum': 1}, '_id': 1}}],
                                    session, {}, kwargs,
                                    exclude_keys=filter.keys())
@@ -84,7 +89,7 @@ class ExplainCollection():
     def delete_one(self, filter: Document, collation=None, session=None,
                    **kwargs):
         limit = 1
-        command = DeleteCommand(self.collection, filter, limit, collation,
+        command = DeleteCommand(self.collection_object, filter, limit, collation,
                                 kwargs)
         return self._explain_command(command)
 
@@ -94,7 +99,7 @@ class ExplainCollection():
                                                       bool]]):
         limit = 0
         kwargs["session"] = session
-        command = DeleteCommand(self.collection, filter, limit, collation,
+        command = DeleteCommand(self.collection_object, filter, limit, collation,
         kwargs)
         return self._explain_command(command)
 
@@ -113,7 +118,7 @@ class ExplainCollection():
         else:
             pipeline = [{"$changeStream": change_stream_options}]
 
-        command = AggregateCommand(self.collection, pipeline,
+        command = AggregateCommand(self.collection_object, pipeline,
                                    session, {"batch_size":batch_size},
                                    {"collation":collation, "max_await_time_ms":
                                        max_await_time_ms})
@@ -123,8 +128,9 @@ class ExplainCollection():
              **kwargs: Dict[str, Union[int, str,Document, bool]]):
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"]
-        command = FindCommand(self.collection,
+        command = FindCommand(self.collection_object,
                                 kwargs)
+
         return self._explain_command(command)
 
     def find_one(self, filter: Document = None, **kwargs: Dict[str,
@@ -133,7 +139,7 @@ class ExplainCollection():
         kwargs.update(locals())
         del kwargs["self"], kwargs["kwargs"]
         kwargs["limit"] = 1
-        command = FindCommand(self.collection, kwargs)
+        command = FindCommand(self.collection_object, kwargs)
         return self._explain_command(command)
 
     def find_one_and_delete(self, filter: Document, projection: list = None,
@@ -145,11 +151,12 @@ class ExplainCollection():
         kwargs["remove"] = True
         kwargs["session"] = session
 
-        command = FindAndModifyCommand(self.collection,
+        command = FindAndModifyCommand(self.collection_object,
                                        kwargs)
         return self._explain_command(command)
 
-    def find_one_and_replace(self, filter: Document, replacement: Document,
+    def find_one_and_replace(self, filter: Document, update:
+    Document={},
                             projection: list = None, sort=None,
                              return_document=pymongo.ReturnDocument.BEFORE,
                              session=None, **kwargs):
@@ -157,13 +164,13 @@ class ExplainCollection():
         kwargs["fields"] = projection
         kwargs["sort"] = sort
         kwargs["new"] = False
-        kwargs["update"] = replacement
+        kwargs["update"] = update
         kwargs["session"] = session
-        command = FindAndModifyCommand(self.collection,
+        command = FindAndModifyCommand(self.collection_object,
                                        kwargs)
         return self._explain_command(command)
 
-    def find_one_and_update(self, filter: Document, replacement: Document,
+    def find_one_and_update(self, filter: Document, update: Document,
                             projection: list = None, sort=None,
                              return_document=pymongo.ReturnDocument.BEFORE,
                              session=None, **kwargs):
@@ -171,10 +178,10 @@ class ExplainCollection():
         kwargs["fields"] = projection
         kwargs["sort"] = sort
         kwargs["upsert"] = False
-        kwargs["update"] = replacement
+        kwargs["update"] = update
         kwargs["session"] = session
 
-        command = FindAndModifyCommand(self.collection,
+        command = FindAndModifyCommand(self.collection_object,
                                        kwargs)
         return self._explain_command(command)
 
@@ -188,7 +195,7 @@ class ExplainCollection():
         if not bypass_document_validation:
             del kwargs["bypass_document_validation"]
         update = replacement
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+        command = UpdateCommand(self.collection_object, filter, update, kwargs)
 
         return self._explain_command(command)
 

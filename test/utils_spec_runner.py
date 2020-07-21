@@ -307,9 +307,9 @@ class SpecRunner(IntegrationTest):
         self.parse_options(arguments)
 
         cmd = getattr(obj, name)
-        wrapped_collection = ExplainCollection(obj)
-        explain_cmd = getattr(wrapped_collection, name)
-
+        if name != "bulk_write" and object_name == "collection":
+            wrapped_collection = ExplainCollection(obj)
+            explain_cmd = getattr(wrapped_collection, name)
 
         for arg_name in list(arguments):
             c2s = camel_to_snake(arg_name)
@@ -368,9 +368,11 @@ class SpecRunner(IntegrationTest):
 
         result = cmd(**dict(arguments))
         cmd_payload = self.command_logger.cmd_payload
-        explain_result = explain_cmd(**dict(arguments))
-        self._compare_command_dicts(wrapped_collection.last_cmd_payload,
-                                    cmd_payload)
+
+        if name != "bulk_write" and object_name == "collection":
+            explain_result = explain_cmd(**dict(arguments))
+            self._compare_command_dicts(wrapped_collection.last_cmd_payload,
+                                        cmd_payload)
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
                 # Read from the primary to ensure causal consistency.

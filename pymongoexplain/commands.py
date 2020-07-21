@@ -39,6 +39,8 @@ class BaseCommand():
     def get_SON(self):
         cmd = SON([(self.command_name, self.collection)])
         cmd.update(self.command_document)
+        if self.command_document == {}:
+            return {}
         return cmd
 
 
@@ -51,8 +53,13 @@ class UpdateCommand(BaseCommand):
             value = kwargs[key]
             if key == "bypass_document_validation":
                 return_document[key] = value
+            elif key == "hint":
+                return_document["updates"][0]["hint"] = value if \
+                    isinstance(value, str) else SON(value)
             else:
                 return_document["updates"][0][key] = value
+        if return_document["updates"][0].get("hint", True) == {}:
+           del return_document["updates"][0]["hint"]
         self.command_document = convert_to_camelcase(return_document)
 
     @property
@@ -81,7 +88,12 @@ class AggregateCommand(BaseCommand):
         super().__init__(collection.name)
         self.command_document = {"pipeline": pipeline, "cursor": cursor_options}
         for key, value in kwargs.items():
-            self.command_document[key] = value
+            if key == "batchSize":
+                if value == 0:
+                    continue
+                self.command_document["cursor"]["batchSize"] = value
+            else:
+                self.command_document[key] = value
 
         self.command_document = convert_to_camelcase(
             self.command_document, exclude_keys=exclude_keys)
@@ -110,18 +122,30 @@ class FindCommand(BaseCommand):
         super().__init__(collection.name)
         for key, value in kwargs.items():
             self.command_document[key] = value
+        if self.command_document["filter"] == {}:
+            self.command_document = {}
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
     def command_name(self):
         return "find"
 
+
 class FindAndModifyCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
         super().__init__(collection.name)
+        print(kwargs)
         for key, value in kwargs.items():
-            self.command_document[key] = value
+            if key == "hint":
+                self.command_document["hint"] = value if \
+                    isinstance(value, str) else SON(value)
+            else:
+                self.command_document[key] = value
+        if "replacement" in self.command_document.keys():
+            self.command_document["update"] = self.command_document[
+                "replacement"]
+            del self.command_document["replacement"]
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
@@ -133,9 +157,15 @@ class DeleteCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
                  limit, collation, kwargs):
         super().__init__(collection.name)
-        self.command_document = {"deletes": [SON({"q": filter, "limit": limit})]}
+        self.command_document = {"deletes": [SON({"q": filter, "limit":
+            limit, "collation": collation})]}
         for key, value in kwargs.items():
-            self.command_document[key] = value
+            if key == "hint":
+                self.command_document["deletes"][0]["hint"] = value if \
+                    isinstance(value, str) else SON(value)
+            else:
+                self.command_document[key] = value
+
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
