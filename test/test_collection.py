@@ -177,8 +177,7 @@ class TestExplainableCollection(unittest.TestCase):
     def test_estimated_document_count(self):
         self.collection.estimated_document_count()
         last_logger_payload = self.logger.cmd_payload
-        res = self.explain.estimated_document_count()
-        self.assertIn("queryPlanner", res)
+        self.explain.estimated_document_count()
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
