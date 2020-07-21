@@ -3,6 +3,8 @@ language: python
 services:
   - mongodb
 
+install: python -m pip install https://github.com/mongodb/mongo-python-driver/archive/3.11.0rc0.tar.gz
+
 python:
   - 3.5
   - 3.6
