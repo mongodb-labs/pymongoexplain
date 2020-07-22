@@ -56,7 +56,7 @@ class UpdateCommand(BaseCommand):
             if key == "bypass_document_validation":
                 return_document[key] = value
             elif key == "hint":
-                if value is not {} and value is not None:
+                if value is not None:
                     return_document["updates"][0]["hint"] = value if \
                         isinstance(value, str) else _index_document(value)
             else:
@@ -121,8 +121,6 @@ class FindCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
         super().__init__(collection.name)
-        if kwargs["filter"] == {}:
-            self.command_document = {}
         for key, value in kwargs.items():
             self.command_document[key] = value
         self.command_document = convert_to_camelcase(self.command_document)

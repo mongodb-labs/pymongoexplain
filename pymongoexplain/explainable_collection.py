@@ -32,9 +32,6 @@ class ExplainCollection():
 
     def _explain_command(self, command):
         command_son = command.get_SON()
-        if command_son == {}:
-            self.last_cmd_payload = {}
-            return {}
         explain_command = SON([("explain", command_son)])
         explain_command["verbosity"] = "queryPlanner"
         self.last_cmd_payload = command_son
