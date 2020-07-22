@@ -20,6 +20,7 @@ from typing import Union
 
 from bson.son import SON
 from pymongo.collection import Collection
+from pymongo.helpers import _index_document
 from .utils import convert_to_camelcase
 
 
@@ -48,18 +49,18 @@ class UpdateCommand(BaseCommand):
     def __init__(self, collection: Collection, filter, update,
                  kwargs):
         super().__init__(collection.name)
-        return_document = {"updates":[{"q": filter, "u": update}]}
-        for key in kwargs:
-            value = kwargs[key]
+        return_document = {
+            "updates":[{"q": filter, "u": update}]
+        }
+        for key, value in kwargs.items():
             if key == "bypass_document_validation":
                 return_document[key] = value
-            elif key == "hint" and value != {}:
-                return_document["updates"][0]["hint"] = value if \
-                    isinstance(value, str) else SON(value)
+            elif key == "hint":
+                if value is not {} and value is not None:
+                    return_document["updates"][0]["hint"] = value if \
+                        isinstance(value, str) else _index_document(value)
             else:
                 return_document["updates"][0][key] = value
-        if return_document["updates"][0].get("hint", True) == {}:
-           del return_document["updates"][0]["hint"]
         self.command_document = convert_to_camelcase(return_document)
 
     @property
@@ -135,17 +136,16 @@ class FindAndModifyCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
         super().__init__(collection.name)
-        print(kwargs)
         for key, value in kwargs.items():
+            if key == "update" and kwargs.get("replacement", None) is not None:
+                continue
             if key == "hint":
                 self.command_document["hint"] = value if \
-                    isinstance(value, str) else SON(value)
+                    isinstance(value, str) else _index_document(value)
+            elif key == "replacement":
+                self.command_document["update"] = value
             else:
                 self.command_document[key] = value
-        if "replacement" in self.command_document.keys():
-            self.command_document["update"] = self.command_document[
-                "replacement"]
-            del self.command_document["replacement"]
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
@@ -162,7 +162,7 @@ class DeleteCommand(BaseCommand):
         for key, value in kwargs.items():
             if key == "hint":
                 self.command_document["deletes"][0]["hint"] = value if \
-                    isinstance(value, str) else SON(value)
+                    isinstance(value, str) else _index_document(value)
             else:
                 self.command_document[key] = value
 
