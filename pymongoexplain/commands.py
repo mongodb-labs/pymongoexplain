@@ -121,10 +121,10 @@ class FindCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
         super().__init__(collection.name)
+        if kwargs["filter"] == {}:
+            self.command_document = {}
         for key, value in kwargs.items():
             self.command_document[key] = value
-        if self.command_document["filter"] == {}:
-            self.command_document = {}
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
