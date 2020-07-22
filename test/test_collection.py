@@ -133,6 +133,13 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+        for _ in self.collection.find({}, limit=10):
+            pass
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find({}, limit=10)
+        last_cmd_payload = self.explain.last_cmd_payload
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
     def test_find_one(self):
         self.collection.find_one()
         last_logger_payload = self.logger.cmd_payload
