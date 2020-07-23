@@ -57,11 +57,11 @@ class ExplainCollection():
         return self._explain_command(command)
 
     def distinct(self, key: str, filter: Document=None, session=None, **kwargs):
-        command = DistinctCommand(self.collection, key, filter, session, kwargs)
+        command = DistinctCommand(self.collection, key, filter, kwargs)
         return self._explain_command(command)
 
     def aggregate(self, pipeline: List[Document], session=None, **kwargs):
-        command = AggregateCommand(self.collection, pipeline, session,
+        command = AggregateCommand(self.collection, pipeline,
                                    {}, kwargs)
         return self._explain_command(command)
 
@@ -75,8 +75,8 @@ class ExplainCollection():
                                  **kwargs):
 
         command = AggregateCommand(self.collection, [{'$match': filter},
-                                                     {'$group': {'n': {'$sum': 1}, '_id': 1}}],
-                                   session, {}, kwargs)
+                                                     {'$group': {'n': {'$sum': 1}, '_id': 1}}]
+                                   , {}, kwargs)
         return self._explain_command(command)
 
     def delete_one(self, filter: Document, collation=None, session=None,
@@ -91,7 +91,6 @@ class ExplainCollection():
                                                             Document,
                                                       bool]]):
         limit = 0
-        kwargs["session"] = session
         command = DeleteCommand(self.collection, filter, limit, collation,
                                 kwargs)
         return self._explain_command(command)
@@ -99,8 +98,7 @@ class ExplainCollection():
     def watch(self, pipeline: Document = None, full_document: Document = None,
               resume_after= None,
               max_await_time_ms: int = None, batch_size: int = None,
-              collation=None, start_at_operation_time=None, session:
-            pymongo.mongo_client.client_session.ClientSession=None,
+              collation=None, start_at_operation_time=None, session=None,
               start_after=None):
         change_stream_options = {"start_after":start_after,
                                  "resume_after":resume_after,
@@ -112,7 +110,7 @@ class ExplainCollection():
             pipeline = [{"$changeStream": change_stream_options}]
 
         command = AggregateCommand(self.collection, pipeline,
-                                   session, {"batch_size":batch_size},
+                                    {"batch_size":batch_size},
                                    {"collation":collation, "max_await_time_ms":
                                        max_await_time_ms})
         return self._explain_command(command)
