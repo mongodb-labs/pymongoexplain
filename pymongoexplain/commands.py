@@ -107,7 +107,7 @@ class DistinctCommand(BaseCommand):
 class AggregateCommand(BaseCommand):
     def __init__(self, collection: Collection, pipeline, session,
                  cursor_options,
-                 kwargs):
+                 kwargs, exclude_keys=None):
 
         super().__init__(collection.name, kwargs.get("collation", None))
         self.command_document.update({"pipeline": pipeline, "cursor":
@@ -122,7 +122,7 @@ class AggregateCommand(BaseCommand):
                 self.command_document[key] = value
 
         self.command_document = convert_to_camelcase(
-            self.command_document)
+            self.command_document, exclude_keys=exclude_keys)
 
     @property
     def command_name(self):
@@ -130,8 +130,8 @@ class AggregateCommand(BaseCommand):
 
 
 class CountCommand(BaseCommand):
-    def __init__(self, collection: Collection, filter,
-                 kwarg, sxclude_keys=None, ):
+    def __init__(self, collection: Collection, filter, kwargs,
+                 sxclude_keys=None):
         super().__init__(collection.name, kwargs.get("collation", None))
         self.command_document.update({"query": filter})
         for key, value in kwargs.items():
