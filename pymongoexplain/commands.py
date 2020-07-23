@@ -131,12 +131,13 @@ class AggregateCommand(BaseCommand):
 
 class CountCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
-                 kwargs):
+                 kwarg, sxclude_keys=None, ):
         super().__init__(collection.name, kwargs.get("collation", None))
         self.command_document.update({"query": filter})
         for key, value in kwargs.items():
             self.command_document[key] = value
-        self.command_document = convert_to_camelcase(self.command_document)
+        self.command_document = convert_to_camelcase(self.command_document,
+                                                     exclude_keys=exclude_keys)
 
     @property
     def command_name(self):
