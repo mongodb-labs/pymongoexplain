@@ -76,8 +76,7 @@ class ExplainCollection():
 
         command = AggregateCommand(self.collection, [{'$match': filter},
                                                      {'$group': {'n': {'$sum': 1}, '_id': 1}}],
-                                   session, {}, kwargs,
-                                   exclude_keys=filter.keys())
+                                   session, {}, kwargs)
         return self._explain_command(command)
 
     def delete_one(self, filter: Document, collation=None, session=None,

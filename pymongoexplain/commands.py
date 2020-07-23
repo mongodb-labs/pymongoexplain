@@ -53,9 +53,7 @@ class UpdateCommand(BaseCommand):
                  hint=None, ordered=None, write_concern=None,
                  bypass_document_validation=None, comment=None):
         super().__init__(collection.name, collation)
-        self.command_document.update({
-            "updates":[{"q": filter, "u": update}]
-        })
+        self.command_document["updates"] = [{"q": filter, "u": update}]
         if upsert is not None:
             self.command_document["updates"][0]["upsert"] = upsert
 
@@ -90,12 +88,10 @@ class UpdateCommand(BaseCommand):
 
 
 class DistinctCommand(BaseCommand):
-    def __init__(self, collection: Collection, key, filter, session,
+    def __init__(self, collection: Collection, key, filter,
                  kwargs):
-        super().__init__(collection.name, kwargs.get("collation", None))
+        super().__init__(collection.name, kwargs.pop("collation", None))
         self.command_document.update({"key": key, "query": filter})
-        if kwargs.get("read_concern", None) is not None:
-            self.command_document["read_concern"] = kwargs["read_concern"]
 
         self.command_document = convert_to_camelcase(self.command_document)
 
@@ -105,11 +101,11 @@ class DistinctCommand(BaseCommand):
 
 
 class AggregateCommand(BaseCommand):
-    def __init__(self, collection: Collection, pipeline, session,
+    def __init__(self, collection: Collection, pipeline,
                  cursor_options,
-                 kwargs, exclude_keys=None):
+                 kwargs):
 
-        super().__init__(collection.name, kwargs.get("collation", None))
+        super().__init__(collection.name, kwargs.pop("collation", None))
         self.command_document.update({"pipeline": pipeline, "cursor":
             cursor_options})
 
@@ -122,7 +118,7 @@ class AggregateCommand(BaseCommand):
                 self.command_document[key] = value
 
         self.command_document = convert_to_camelcase(
-            self.command_document, exclude_keys=exclude_keys)
+            self.command_document)
 
     @property
     def command_name(self):
@@ -132,12 +128,11 @@ class AggregateCommand(BaseCommand):
 class CountCommand(BaseCommand):
     def __init__(self, collection: Collection, filter, kwargs,
                  sxclude_keys=None):
-        super().__init__(collection.name, kwargs.get("collation", None))
+        super().__init__(collection.name, kwargs.pop("collation", None))
         self.command_document.update({"query": filter})
         for key, value in kwargs.items():
             self.command_document[key] = value
-        self.command_document = convert_to_camelcase(self.command_document,
-                                                     exclude_keys=exclude_keys)
+        self.command_document = convert_to_camelcase(self.command_document)
 
     @property
     def command_name(self):
@@ -147,7 +142,7 @@ class CountCommand(BaseCommand):
 class FindCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
-        super().__init__(collection.name, kwargs.get("collation", None))
+        super().__init__(collection.name, kwargs.pop("collation", None))
         for key, value in kwargs.items():
             self.command_document[key] = value
         self.command_document = convert_to_camelcase(self.command_document)
@@ -160,7 +155,7 @@ class FindCommand(BaseCommand):
 class FindAndModifyCommand(BaseCommand):
     def __init__(self, collection: Collection,
                  kwargs):
-        super().__init__(collection.name, kwargs.get("collation", None))
+        super().__init__(collection.name, kwargs.pop("collation", None))
         for key, value in kwargs.items():
             if key == "update" and kwargs.get("replacement", None) is not None:
                 continue
@@ -181,9 +176,9 @@ class FindAndModifyCommand(BaseCommand):
 class DeleteCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
                  limit, collation, kwargs):
-        super().__init__(collection.name, kwargs.get("collation", None))
-        self.command_document.update({"deletes": [SON({"q": filter, "limit":
-            limit})]})
+        super().__init__(collection.name, kwargs.pop("collation", None))
+        self.command_document["deletes"] = [SON({"q": filter, "limit":
+            limit})]
         for key, value in kwargs.items():
             if key == "hint":
                 self.command_document["deletes"][0]["hint"] = value if \
