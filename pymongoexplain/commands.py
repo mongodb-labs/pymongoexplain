@@ -177,8 +177,8 @@ class DeleteCommand(BaseCommand):
     def __init__(self, collection: Collection, filter,
                  limit, collation, kwargs):
         super().__init__(collection.name, kwargs.pop("collation", None))
-        self.command_document["deletes"] = [SON({"q": filter, "limit":
-            limit})]
+        self.command_document["deletes"] = [{"q": filter, "limit":
+            limit}]
         for key, value in kwargs.items():
             if key == "hint":
                 self.command_document["deletes"][0]["hint"] = value if \
