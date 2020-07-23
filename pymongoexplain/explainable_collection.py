@@ -41,22 +41,19 @@ class ExplainCollection():
                    bypass_document_validation=False,
                    collation=None, array_filters=None, hint=None,
                    session=None, **kwargs):
-        kwargs.update(locals())
-        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
-        kwargs["multi"] = False
-        if bypass_document_validation == False:
-            del kwargs["bypass_document_validation"]
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+        command = UpdateCommand(self.collection, filter, update,
+                                bypass_document_validation=
+                                    bypass_document_validation,
+                                array_filters=array_filters,
+                                collation=collation, hint=hint,
+                                upsert=upsert, multi=False)
         return self._explain_command(command)
 
     def update_many(self, filter: Document, update: Document, upsert=False,
-                    array_filters=None, bypass_document_validation=False, collation=None, session=None, **kwargs):
-        kwargs.update(locals())
-        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs["update"]
-        kwargs["multi"] = True
-        if bypass_document_validation == False:
-            del kwargs["bypass_document_validation"]
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+                    array_filters=None, bypass_document_validation=False,
+                    collation=None, hint=None, session=None, **kwargs):
+        command = UpdateCommand(self.collection, filter, update, multi=True,
+                                bypass_document_validation=bypass_document_validation, upsert=upsert, collation=collation, array_filters=array_filters, hint=hint)
         return self._explain_command(command)
 
     def distinct(self, key: str, filter: Document=None, session=None, **kwargs):
@@ -184,15 +181,10 @@ class ExplainCollection():
 
     def replace_one(self, filter: Document, replacement: Document,
                     upsert=False, bypass_document_validation=False,
-                    collation=None, session=None, **kwargs):
-        kwargs.update(locals())
-        del kwargs["self"], kwargs["kwargs"], kwargs["filter"], kwargs[
-            "replacement"]
-        kwargs["multi"] = False
-        if not bypass_document_validation:
-            del kwargs["bypass_document_validation"]
-        update = replacement
-        command = UpdateCommand(self.collection, filter, update, kwargs)
+                    collation=None, hint=None, session=None, **kwargs):
+        command = UpdateCommand(self.collection, filter, update=replacement,
+                                bypass_document_validation=bypass_document_validation,
+                                hint=hint, collation=collation, multi=False, upsert=upsert)
 
         return self._explain_command(command)
 

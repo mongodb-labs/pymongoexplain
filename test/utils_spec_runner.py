@@ -306,6 +306,7 @@ class SpecRunner(IntegrationTest):
         arguments.update(arguments.pop("options", {}))
         self.parse_options(arguments)
 
+
         cmd = getattr(obj, name)
         if name != "bulk_write" and object_name == "collection":
             wrapped_collection = ExplainCollection(obj)
@@ -367,12 +368,7 @@ class SpecRunner(IntegrationTest):
                 arguments[c2s] = arguments.pop(arg_name)
 
         result = cmd(**dict(arguments))
-        cmd_payload = self.command_logger.cmd_payload
 
-        if name != "bulk_write" and object_name == "collection":
-            explain_result = explain_cmd(**dict(arguments))
-            self._compare_command_dicts(wrapped_collection.last_cmd_payload,
-                                        cmd_payload)
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
                 # Read from the primary to ensure causal consistency.
@@ -389,6 +385,11 @@ class SpecRunner(IntegrationTest):
         if isinstance(result, Cursor) or isinstance(result, CommandCursor):
             return list(result)
 
+        cmd_payload = self.command_logger.cmd_payload
+        if name != "bulk_write" and object_name == "collection":
+            explain_cmd(**dict(arguments))
+            self._compare_command_dicts(wrapped_collection.last_cmd_payload,
+                                        cmd_payload)
         return result
 
     def allowable_errors(self, op):
