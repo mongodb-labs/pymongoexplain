@@ -165,13 +165,9 @@ class FindAndModifyCommand(BaseCommand):
                  kwargs):
         super().__init__(collection.name, kwargs.pop("collation", None))
         for key, value in kwargs.items():
-            if key == "update" and kwargs.get("replacement", None) is not None:
-                continue
             if key == "hint":
                 self.command_document["hint"] = value if \
                     isinstance(value, str) else _index_document(value)
-            elif key == "replacement":
-                self.command_document["update"] = value
             elif key == "sort" and value is not None:
                 self.command_document["sort"] = _index_document(
                     value)
