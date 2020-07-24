@@ -20,7 +20,7 @@ from typing import Union
 
 from bson.son import SON
 from pymongo.collection import Collection
-from pymongo.helpers import _index_document
+from pymongo.helpers import _index_document, _fields_list_to_dict
 from pymongo.collation import validate_collation_or_none
 from .utils import convert_to_camelcase
 
@@ -144,7 +144,15 @@ class FindCommand(BaseCommand):
                  kwargs):
         super().__init__(collection.name, kwargs.pop("collation", None))
         for key, value in kwargs.items():
-            self.command_document[key] = value
+            if key == "projection" and value is not None:
+                self.command_document["projection"] = _fields_list_to_dict(
+                    value, "projection")
+            elif key == "sort":
+                self.command_document["sort"] = _index_document(
+                    value)
+            else:
+                self.command_document[key] = value
+
         self.command_document = convert_to_camelcase(self.command_document)
 
     @property
@@ -164,6 +172,9 @@ class FindAndModifyCommand(BaseCommand):
                     isinstance(value, str) else _index_document(value)
             elif key == "replacement":
                 self.command_document["update"] = value
+            elif key == "sort" and value is not None:
+                self.command_document["sort"] = _index_document(
+                    value)
             else:
                 self.command_document[key] = value
         self.command_document = convert_to_camelcase(self.command_document)

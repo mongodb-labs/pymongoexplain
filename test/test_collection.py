@@ -140,10 +140,19 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+
+
     def test_find_one(self):
-        self.collection.find_one()
+        self.collection.find_one(projection=['a', 'b.c'])
         last_logger_payload = self.logger.cmd_payload
-        res = self.explain.find_one()
+        res = self.explain.find_one(projection=['a', 'b.c'])
+        self.assertIn("queryPlanner", res)
+        last_cmd_payload = self.explain.last_cmd_payload
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
+        self.collection.find_one(projection={'a': 1, 'b.c': 1})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one(projection={'a': 1, 'b.c': 1})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
