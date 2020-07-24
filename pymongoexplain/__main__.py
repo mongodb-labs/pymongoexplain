@@ -49,18 +49,23 @@ for old_func, old_func_name in zip(old_functions, old_function_names):
     setattr(Collection, old_func_name, make_func(old_func, old_func_name))
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="This script is intended to "
+                                                 "provide an easy method to "
+                                                 "run explain on all commands "
+                                                 "in a script. Find more "
+                                                 "documentation at "
+                                                 "https://github.com/mongodb-labs/pymongoexplain/")
     parser.add_argument(
-        "input_script", action="store", nargs=1, help="The script that you "
+        "input_script", nargs=1,help="The script that you "
                                                       "wish to run explain on.")
     parser.add_argument(
         "arguments", metavar="script_arguments", help="add arguments to "
-                                                      "explained script",
-                        action="store", nargs="?")
+                                                      "explained script"
+                                                        , nargs="?")
 
     args = parser.parse_args()
-    for file in args.input_script:
-        with open(file) as f:
-            sys.argv = [file]+args.arguments if args.arguments is not None else\
-                        [file]
-            exec(f.read())
+    file = args.input_script[0]
+    with open(file) as f:
+        sys.argv = [file]+args.arguments if args.arguments is not None else\
+                    [file]
+        exec(f.read())
