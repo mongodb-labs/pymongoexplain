@@ -146,7 +146,7 @@ class ExplainCollection():
                                        kwargs)
         return self._explain_command(command)
 
-    def find_one_and_replace(self, filter: Document, update:
+    def find_one_and_replace(self, filter: Document, replacement:
     Document={},
                             projection: list = None, sort=None,
                              return_document=pymongo.ReturnDocument.BEFORE,
@@ -155,7 +155,7 @@ class ExplainCollection():
         kwargs["fields"] = projection
         kwargs["sort"] = sort
         kwargs["new"] = False
-        kwargs["update"] = update
+        kwargs["update"] = replacement
         kwargs["session"] = session
         command = FindAndModifyCommand(self.collection,
                                        kwargs)

@@ -16,15 +16,12 @@
 """Utility functions"""
 
 
-def convert_to_camelcase(d, exclude_keys=[]):
+def convert_to_camelcase(d):
     if not isinstance(d, dict):
         return d
     ret = dict()
     for key in d.keys():
         if d[key] is None:
-            continue
-        if key in exclude_keys:
-            ret[key] = d[key]
             continue
         new_key = key
         if "_" in key and key[0] != "_":

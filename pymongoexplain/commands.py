@@ -53,7 +53,8 @@ class UpdateCommand(BaseCommand):
                  hint=None, ordered=None, write_concern=None,
                  bypass_document_validation=None, comment=None):
         super().__init__(collection.name, collation)
-        self.command_document["updates"] = [{"q": filter, "u": update}]
+        update_doc = {"q": filter, "u": update}
+        self.command_document["updates"] = [update_doc]
         if upsert is not None:
             self.command_document["updates"][0]["upsert"] = upsert
 
@@ -126,8 +127,7 @@ class AggregateCommand(BaseCommand):
 
 
 class CountCommand(BaseCommand):
-    def __init__(self, collection: Collection, filter, kwargs,
-                 sxclude_keys=None):
+    def __init__(self, collection: Collection, filter, kwargs):
         super().__init__(collection.name, kwargs.pop("collation", None))
         self.command_document.update({"query": filter})
         for key, value in kwargs.items():
