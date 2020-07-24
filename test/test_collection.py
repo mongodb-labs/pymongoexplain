@@ -185,10 +185,10 @@ class TestExplainableCollection(unittest.TestCase):
     def test_cli_tool(self):
         import subprocess
         res = subprocess.run(["python3",  "-m", "pymongoexplain",
-                              "./testscript.py"])
+                              "../test/testscript.py"])
         self.assertTrue(res.returncode == 0)
         res = subprocess.run(["python3",  "-m", "pymongoexplain",
-                              "./testscript.py", "-h"])
+                              "../test/testscript.py", "-h"])
         self.assertTrue(res.returncode == 0)
 
 if __name__ == '__main__':
