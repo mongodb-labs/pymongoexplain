@@ -56,10 +56,11 @@ if __name__ == '__main__':
     parser.add_argument(
         "arguments", metavar="script_arguments", help="add arguments to "
                                                       "explained script",
-                        action="store", nargs="+")
+                        action="store", nargs="?")
 
     args = parser.parse_args()
-    for file in args.input:
+    for file in args.input_script:
         with open(file) as f:
-            sys.argv = [file]+args.arguments
+            sys.argv = [file]+args.arguments if args.arguments is not None else\
+                        [file]
             exec(f.read())
