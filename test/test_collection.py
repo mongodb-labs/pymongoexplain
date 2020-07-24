@@ -182,6 +182,14 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+    def test_cli_tool(self):
+        import subprocess
+        res = subprocess.run(["python3",  "-m", "pymongoexplain",
+                              "./testscript.py"])
+        self.assertTrue(res.returncode == 0)
+        res = subprocess.run(["python3",  "-m", "pymongoexplain",
+                              "./testscript.py", "-h"])
+        self.assertTrue(res.returncode == 0)
 
 if __name__ == '__main__':
     unittest.main()
