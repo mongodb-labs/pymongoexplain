@@ -7,11 +7,11 @@ that allows that allows PyMongo's Collection methods to be explained_
 Tutorial
 ########
 
-PyMongo operations in existing application code can be explained by swapping Collection objects with ExplainCollection
-objects. The ExplainCollection class provides all CRUD API methods provided by PyMongo's Collection,
+PyMongo operations in existing application code can be explained by swapping ``Collection`` objects with ``ExplainCollection``
+objects. The ``ExplainCollection`` class provides all CRUD API methods provided by PyMongo's ``Collection``,
 but using this class to run operations runs explain on them, instead of executing them.
 
-To run explain on a command, first instantiate an ExplainCollection from the Collection object originally used to run the command::
+To run explain on a command, first instantiate an ``ExplainCollection`` from the ``Collection`` object originally used to run the command::
 
     collection = client.db.products
     explain = ExplainCollection(collection)
