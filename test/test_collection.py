@@ -189,8 +189,7 @@ class TestExplainableCollection(unittest.TestCase):
         script_path = os.path.join(os.path.dirname(os.path.realpath(
             __file__)), "test_cli_tool_script.py")
         res = subprocess.run(["python3",  "-m", "pymongoexplain",
-                              script_path],
-                             stdout = subprocess.PIPE)
+                              script_path], stdout = subprocess.PIPE)
         self.assertTrue(res.returncode == 0)
         self.assertNotEqual(res.stdout, "")
 
