@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
+import subprocess
 
 from pymongo import MongoClient
 from pymongo import monitoring
@@ -183,12 +185,16 @@ class TestExplainableCollection(unittest.TestCase):
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
     def test_cli_tool(self):
-        import subprocess
         res = subprocess.run(["python3",  "-m", "pymongoexplain",
-                              "/home/travis/build/mongodb-labs/pymongoexplain/test/testscript.py"])
+                              "/home/travis/build/mongodb-labs/pymongoexplain/test/test_cli_tool_script.py"],
+                             stdout = subprocess.PIPE)
         self.assertTrue(res.returncode == 0)
+        self.assertNotEqual(res.stdout, "")
+        
         res = subprocess.run(["python3",  "-m", "pymongoexplain",
-                              "/home/travis/build/mongodb-labs/pymongoexplain/test/testscript.py", "-h"])
+                              "/home/travis/build/mongodb-labs/pymongoexplain"
+                              "/test/test_cli_tool_script.py", "-h"], stdout = subprocess.PIPE)
+        self.assertNotEqual(res.stdout, "")
         self.assertTrue(res.returncode == 0)
 
 if __name__ == '__main__':
