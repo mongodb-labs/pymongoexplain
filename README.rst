@@ -6,20 +6,21 @@ that allows that allows PyMongo's Collection methods to be explained_
 
 Tutorial
 ########
-The intended use case for this package is to allow ``pymongo`` commands to be easily explained_.
-This can be done by simply swapping out ``Collection`` for ``ExplainCollection``,
-which has the same methods but will run explain on them **instead** of executing them.
-The first step is to create a ``MongoClient`` instance, then, you can simply get a collection instance, and then wrap it in the ``ExplainCollection`` class.::
+
+PyMongo operations in existing application code can be explained by swapping Collection objects with ExplainCollection
+objects. The ExplainCollection class provides all CRUD API methods provided by PyMongo's Collection,
+but using this class to run operations runs explain on them, instead of executing them.
+
+To run explain on a command, first instantiate an ExplainCollection from the Collection object originally used to run the command::
 
     collection = client.db.products
     explain = ExplainCollection(collection)
 
-Now you are ready to explain some commands. Remember that these commands will not be executed, they will simply have explain
-run on them.::
+Now you are ready to explain some commands. Remember that explaining a command does not execute it::
 
-    res = explain.update_one({"quantity": 1057, "category": "apparel"}, {"$set": {"reorder": True}})
+    result = explain.update_one({"quantity": 1057, "category": "apparel"}, {"$set": {"reorder": True}})
 
-The value of ``res`` will be whatever the output of explain for that ``update_one`` command is: ::
+Now ``result`` will contain the output of running explain on the given ``update_one`` command::
 
     {'$clusterTime':
         {'signature': {
@@ -47,22 +48,21 @@ The value of ``res`` will be whatever the output of explain for that ``update_on
                       'operationTime': Timestamp(1595603051, 3)}
 
 
-This diagnostic information should hopefully help you understand what the problem is with your commands. Because
-``ExplainCollection`` implements all the methods of ``Collection``, you can simply replace instances of collection with
-an ``ExplainCollection`` to get this information.
+Since ``ExplainCollection`` instances provide all the same methods provided by ``Collection`` instances, explaining operations in your application code is a simple matter of replacing ``Collection`` instances in your application code with ``ExplainCollection`` instances.
 
-CLI Tool
-########
+
+Explaining commands in a script
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can also run explain on all commands within a Python script using our CLI tool.
 Given a script that contains ``pymongo`` commands within it, you can simply run: ::
 
-    python3 -m pymongoexplain ../<pymongoscript>.py
+    python3 -m pymongoexplain <path/to/your/script.py>
 
 This will print out the explain output for every single command
 within that script, in addition to running the script itself.
 
-If you have arguments that need to be supplied, you can simply append those
-after the script path: ::
+Any positional parameters or arguments required by your script can be
+simply be appended to the invocation as follows::
 
-    python3 -m pymongoexplain ../<pymongoscript>.py <arg1> <arg2>
+    python3 -m pymongoexplain <path/to/your/script.py> [PARAMS] [--optname OPTS]
