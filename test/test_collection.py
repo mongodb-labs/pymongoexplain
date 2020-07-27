@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
+import subprocess
+import os
 
 from pymongo import MongoClient
 from pymongo import monitoring
@@ -182,6 +185,18 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+    def test_cli_tool(self):
+        script_path = os.path.join(os.path.dirname(os.path.realpath(
+            __file__)), "test_cli_tool_script.py")
+        res = subprocess.run(["python3",  "-m", "pymongoexplain",
+                              script_path], stdout = subprocess.PIPE)
+        self.assertTrue(res.returncode == 0)
+        self.assertNotEqual(res.stdout, "")
+
+        res = subprocess.run(["python3",  "-m", "pymongoexplain",
+                              script_path, "-h"], stdout = subprocess.PIPE)
+        self.assertNotEqual(res.stdout, "")
+        self.assertTrue(res.returncode == 0)
 
 if __name__ == '__main__':
     unittest.main()

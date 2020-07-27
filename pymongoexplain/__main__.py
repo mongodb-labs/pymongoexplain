@@ -13,16 +13,20 @@
 # limitations under the License.
 
 
+"""This script is intended to provide an easy method to run explain on all
+commands in a script. Find more documentation at
+https://github.com/mongodb-labs/pymongoexplain/"
+"""
+
 from pymongo.collection import Collection
 from .explainable_collection import ExplainCollection
 
 import sys
 import logging
+import argparse
 
 
-'''This module allows for pymongo scripts to run with with pymongoexplain, 
-explaining each command as it occurs.
-'''
+
 
 
 FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
@@ -48,6 +52,18 @@ for old_func, old_func_name in zip(old_functions, old_function_names):
     setattr(Collection, old_func_name, make_func(old_func, old_func_name))
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
-        with open(file) as f:
-            exec(f.read())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "input_script", nargs=1,help="The script that you "
+                                     "wish to run explain on.")
+    parser.add_argument(
+        "arguments", metavar="script_arguments", help="add arguments to "
+                                                       "explained script",
+                                                        nargs="?")
+
+    args = parser.parse_args()
+    file = args.input_script[0]
+    with open(file) as f:
+        sys.argv = [file]+args.arguments if args.arguments is not None else\
+                    [file]
+        exec(f.read())
