@@ -1,11 +1,72 @@
-This package provides an ``ExplainCollection`` class
-that allows that allows PyMongo's Collection methods to be explained_
+==============
+PyMongoExplain
+==============
+
+:Info: Explain collections in PyMongo. See
+       `GitHub <https://github.com/mongodb-labs/pymongoexplain>`_
+       for the latest source.
+:Author: Julius Park
+
+About
+=====
+This package provides an ``ExplainCollection`` class that allows PyMongo's Collection methods to be explained_
 
 .. _explained: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.
 
 
+Support / Feedback
+==================
+
+For issues with, questions about, or feedback for PyMongoExplain, please look into
+our `support channels <http://www.mongodb.org/about/support>`_. Please
+do not email any of the PyMongoExplain developers directly with issues or
+questions - you're more likely to get an answer on the `mongodb-user
+<http://groups.google.com/group/mongodb-user>`_ list on Google Groups.
+
+Bugs / Feature Requests
+=======================
+
+Think you’ve found a bug? Want to see a new feature in PyMongoExplain?
+Please open a case in our issue management tool, JIRA:
+
+- `Create an account and login <https://jira.mongodb.org>`_.
+- Navigate to `the PYTHON project <https://jira.mongodb.org/browse/PYTHON>`_.
+- Click **Create Issue** - Please provide as much information as possible about the issue type and how to reproduce it.
+
+Bug reports in JIRA for all driver projects (i.e. PYTHON, CSHARP, JAVA) and the
+Core Server (i.e. SERVER) project are **public**.
+
+How To Ask For Help
+-------------------
+
+Please include all of the following information when opening an issue:
+
+- Detailed steps to reproduce the problem, including full traceback, if possible.
+- The exact python version used, with patch level::
+
+  $ python -c "import sys; print(sys.version)"
+
+- The exact version of PyMongo used (if applicable), with patch level::
+
+  $ python -c "import pymongo; print(pymongo.version); print(pymongo.has_c())"
+
+
+
+Dependencies
+============
+
+PyMongoExplain supports CPython 3.5+, and PyPy3.5+.
+
+PyMongoExplain requires `PyMongo <https://github.com/mongodb/mongo-python-driver/>`_
+
+Testing
+=======
+
+The easiest way to run the tests is to run **python setup.py test** in
+the root of the distribution.
+
 Tutorial
-########
+========
 
 PyMongo operations in existing application code can be explained by swapping ``Collection`` objects with ``ExplainCollection``
 objects. The ``ExplainCollection`` class provides all CRUD API methods provided by PyMongo's ``Collection``,
@@ -52,7 +113,7 @@ Since ``ExplainCollection`` instances provide all the same methods provided by `
 
 
 Explaining commands in a script
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------
 
 You can also run explain on all commands within a Python script using our CLI tool.
 Given a script that contains ``pymongo`` commands within it, you can simply run: ::
@@ -66,3 +127,5 @@ Any positional parameters or arguments required by your script can be
 simply be appended to the invocation as follows::
 
     python3 -m pymongoexplain <path/to/your/script.py> [PARAMS] [--optname OPTS]
+
+
