@@ -19,14 +19,64 @@
 from typing import Union
 
 from bson.son import SON
+from bson.py3compat import abc, iteritems, string_type
+
 from pymongo.collection import Collection
-from pymongo.helpers import _index_document, _fields_list_to_dict
 from pymongo.collation import validate_collation_or_none
 from .utils import convert_to_camelcase
 
 
 Document = Union[dict, SON]
 
+
+def _index_document(index_list):
+    """Helper to generate an index specifying document.
+
+    Takes a list of (key, direction) pairs.
+    """
+    if isinstance(index_list, abc.Mapping):
+        raise TypeError("passing a dict to sort/create_index/hint is not "
+                        "allowed - use a list of tuples instead. did you "
+                        "mean %r?" % list(iteritems(index_list)))
+    elif not isinstance(index_list, (list, tuple)):
+        raise TypeError("must use a list of (key, direction) pairs, "
+                        "not: " + repr(index_list))
+    if not len(index_list):
+        raise ValueError("key_or_list must not be the empty list")
+
+    index = SON()
+    for (key, value) in index_list:
+        if not isinstance(key, string_type):
+            raise TypeError("first item in each key pair must be a string")
+        if not isinstance(value, (string_type, int, abc.Mapping)):
+            raise TypeError("second item in each key pair must be 1, -1, "
+                            "'2d', 'geoHaystack', or another valid MongoDB "
+                            "index specifier.")
+        index[key] = value
+    return index
+
+
+def _fields_list_to_dict(fields, option_name):
+    """Takes a sequence of field names and returns a matching dictionary.
+
+    ["a", "b"] becomes {"a": 1, "b": 1}
+
+    and
+
+    ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
+    """
+    if isinstance(fields, abc.Mapping):
+        return fields
+
+    if isinstance(fields, (abc.Sequence, abc.Set)):
+        if not all(isinstance(field, string_type) for field in fields):
+            raise TypeError("%s must be a list of key names, each an "
+                            "instance of %s" % (option_name,
+                                                string_type.__name__))
+        return dict.fromkeys(fields, 1)
+
+    raise TypeError("%s must be a mapping or "
+                    "list of key names" % (option_name,))
 
 class BaseCommand():
     def __init__(self, collection, collation):
@@ -54,19 +104,19 @@ class UpdateCommand(BaseCommand):
                  bypass_document_validation=None, comment=None):
         super().__init__(collection.name, collation)
         update_doc = {"q": filter, "u": update}
-        self.command_document["updates"] = [update_doc]
         if upsert is not None:
-            self.command_document["updates"][0]["upsert"] = upsert
+            update_doc["upsert"] = upsert
 
         if multi is not None:
-            self.command_document["updates"][0]["multi"] = multi
+            update_doc["multi"] = multi
 
         if array_filters is not None:
-            self.command_document["updates"][0]["array_filters"] = array_filters
+            update_doc["array_filters"] = array_filters
 
         if hint is not None:
-            self.command_document["updates"][0]["hint"] = hint if \
+            update_doc["hint"] = hint if \
                         isinstance(hint, str) else _index_document(hint)
+        self.command_document["updates"] = [update_doc]
 
         if ordered is not None:
             self.command_document["ordered"] = ordered
