@@ -17,24 +17,14 @@ This package provides an ``ExplainCollection`` class that allows PyMongo's Colle
 Support / Feedback
 ==================
 
-For issues with, questions about, or feedback for PyMongoExplain, please look into
-our `support channels <http://www.mongodb.org/about/support>`_. Please
-do not email any of the PyMongoExplain developers directly with issues or
-questions - you're more likely to get an answer on the `mongodb-user
-<http://groups.google.com/group/mongodb-user>`_ list on Google Groups.
+For questions, discussions, or general technical support, visit the MongoDB Community Forums.
+The MongoDB Community Forums are a centralized place to connect with other MongoDB users, ask questions, and get answers.
 
 Bugs / Feature Requests
 =======================
 
 Think you’ve found a bug? Want to see a new feature in PyMongoExplain?
-Please open a case in our issue management tool, JIRA:
-
-- `Create an account and login <https://jira.mongodb.org>`_.
-- Navigate to `the PYTHON project <https://jira.mongodb.org/browse/PYTHON>`_.
-- Click **Create Issue** - Please provide as much information as possible about the issue type and how to reproduce it.
-
-Bug reports in JIRA for all driver projects (i.e. PYTHON, CSHARP, JAVA) and the
-Core Server (i.e. SERVER) project are **public**.
+Please open an issue on this GitHub repository.
 
 How To Ask For Help
 -------------------
@@ -50,12 +40,15 @@ Please include all of the following information when opening an issue:
 
   $ python -c "import pymongo; print(pymongo.version); print(pymongo.has_c())"
 
+- The exact version of PyMongoExplain used::
+
+  $ python -c "import pymongoexplain; print(pymongoexplain.version)"
 
 
 Dependencies
 ============
 
-PyMongoExplain supports CPython 3.5+, and PyPy3.5+.
+PyMongoExplain requires CPython 3.5+, and PyPy3.5+.
 
 PyMongoExplain requires `PyMongo <https://github.com/mongodb/mongo-python-driver/>`_
 
