@@ -13,6 +13,12 @@ This package provides an ``ExplainCollection`` class that allows PyMongo's Colle
 
 .. _explained: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.
 
+Installation
+============
+
+To install this package simply use pip: ::
+
+    pip install pymongoexplain
 
 Support / Feedback
 ==================
