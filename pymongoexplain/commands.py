@@ -19,6 +19,7 @@
 from typing import Union
 
 from bson.son import SON
+from collections import abc
 
 from pymongo.collection import Collection
 from pymongo.collation import validate_collation_or_none
@@ -33,7 +34,7 @@ def _index_document(index_list):
 
     Takes a list of (key, direction) pairs.
     """
-    if isinstance(index_list, dict):
+    if isinstance(index_list, abc.Mapping):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
                         "mean %r?" % list(index_list.items()))
@@ -47,7 +48,7 @@ def _index_document(index_list):
     for (key, value) in index_list:
         if not isinstance(key, str):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (str, int, dict, SON)):
+        if not isinstance(value, (str, int, abc.Mapping)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', 'geoHaystack', or another valid MongoDB "
                             "index specifier.")
@@ -64,10 +65,10 @@ def _fields_list_to_dict(fields, option_name):
 
     ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
     """
-    if isinstance(fields, (dict, SON)):
+    if isinstance(fields, abc.Mapping):
         return fields
 
-    if isinstance(fields, (list, set)):
+    if isinstance(fields, (abc.Sequence, abc.Set)):
         if not all(isinstance(field, str) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
                             "instance of %s" % (option_name,
@@ -76,6 +77,7 @@ def _fields_list_to_dict(fields, option_name):
 
     raise TypeError("%s must be a mapping or "
                     "list of key names" % (option_name,))
+
 
 class BaseCommand():
     def __init__(self, collection, collation):
