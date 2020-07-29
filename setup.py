@@ -26,8 +26,8 @@ setup(
         'console_scripts': [
             'pymongoexplain=pymongoexplain.cli_explain:cli_explain'],
     },
-    tests_require=["pymongo==3.10.1"],
-    install_requires=['pymongo==3.10.1'],
+    tests_require=["pymongo>=3.10"],
+    install_requires=['pymongo>=3.10'],
     python_requires='>=3.5',
     license="Apache License, Version 2.0",
     classifiers=[

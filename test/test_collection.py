@@ -136,10 +136,26 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
-    def test_find_one(self):
-        self.collection.find_one()
+        for _ in self.collection.find({}, limit=10):
+            pass
         last_logger_payload = self.logger.cmd_payload
-        res = self.explain.find_one()
+        res = self.explain.find({}, limit=10)
+        last_cmd_payload = self.explain.last_cmd_payload
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
+
+
+    def test_find_one(self):
+        self.collection.find_one(projection=['a', 'b.c'])
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one(projection=['a', 'b.c'])
+        self.assertIn("queryPlanner", res)
+        last_cmd_payload = self.explain.last_cmd_payload
+        self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
+        self.collection.find_one(projection={'a': 1, 'b.c': 1})
+        last_logger_payload = self.logger.cmd_payload
+        res = self.explain.find_one(projection={'a': 1, 'b.c': 1})
         self.assertIn("queryPlanner", res)
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
@@ -180,8 +196,7 @@ class TestExplainableCollection(unittest.TestCase):
     def test_estimated_document_count(self):
         self.collection.estimated_document_count()
         last_logger_payload = self.logger.cmd_payload
-        res = self.explain.estimated_document_count()
-        self.assertIn("queryPlanner", res)
+        self.explain.estimated_document_count()
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
