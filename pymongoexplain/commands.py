@@ -19,7 +19,6 @@
 from typing import Union
 
 from bson.son import SON
-from bson.py3compat import abc, iteritems, string_type
 
 from pymongo.collection import Collection
 from pymongo.collation import validate_collation_or_none
@@ -34,10 +33,10 @@ def _index_document(index_list):
 
     Takes a list of (key, direction) pairs.
     """
-    if isinstance(index_list, abc.Mapping):
+    if isinstance(index_list, dict):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
-                        "mean %r?" % list(iteritems(index_list)))
+                        "mean %r?" % list(index_list.items()))
     elif not isinstance(index_list, (list, tuple)):
         raise TypeError("must use a list of (key, direction) pairs, "
                         "not: " + repr(index_list))
@@ -46,9 +45,9 @@ def _index_document(index_list):
 
     index = SON()
     for (key, value) in index_list:
-        if not isinstance(key, string_type):
+        if not isinstance(key, str):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (string_type, int, abc.Mapping)):
+        if not isinstance(value, (str, int, Document)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', 'geoHaystack', or another valid MongoDB "
                             "index specifier.")
@@ -65,14 +64,14 @@ def _fields_list_to_dict(fields, option_name):
 
     ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
     """
-    if isinstance(fields, abc.Mapping):
+    if isinstance(fields, Document):
         return fields
 
-    if isinstance(fields, (abc.Sequence, abc.Set)):
-        if not all(isinstance(field, string_type) for field in fields):
+    if isinstance(fields, (list, set)):
+        if not all(isinstance(field, str) for field in fields):
             raise TypeError("%s must be a list of key names, each an "
                             "instance of %s" % (option_name,
-                                                string_type.__name__))
+                                                str.__name__))
         return dict.fromkeys(fields, 1)
 
     raise TypeError("%s must be a mapping or "
