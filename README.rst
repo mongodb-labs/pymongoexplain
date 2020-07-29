@@ -56,7 +56,7 @@ Dependencies
 
 PyMongoExplain requires CPython 3.5+, and PyPy3.5+.
 
-PyMongoExplain requires `PyMongo <https://github.com/mongodb/mongo-python-driver/>`_
+PyMongoExplain requires `PyMongo>=3.10,<4 <https://github.com/mongodb/mongo-python-driver/>`_
 
 Testing
 =======
@@ -82,30 +82,37 @@ Now you are ready to explain some commands. Remember that explaining a command d
 
 Now ``result`` will contain the output of running explain on the given ``update_one`` command::
 
-    {'$clusterTime':
-        {'signature': {
-            'keyId': 0, 'hash': b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'},
-            'clusterTime': Timestamp(1595603051, 3)},
-            'serverInfo': {'host': 'Juliuss-MBP.verizon.net', 'version': '4.4.0-rc13', 'port': 27017, 'gitVersion': '27f5c1ee9f513f29fe30b8ebefed99581428c6e1'},
-            'queryPlanner':
-                {'plannerVersion': 1,
-                'queryHash': 'CD8F6D8F',
-                'parsedQuery':
-                    {'$and': [
-                    {'category': {'$eq': 'apparel'}},
-                    {'quantity': {'$eq': 1057}}]},
-                    'namespace': 'db.products',
-                    'indexFilterSet': False,
-                    'winningPlan':
-                    {'inputStage':
-                        {'filter':
-                            {'$and': [
-                                {'category': {'$eq': 'apparel'}},
-                      {'quantity': {'$eq': 1057}}]},
-                       'stage': 'COLLSCAN', 'direction': 'forward'},
-                       'stage': 'UPDATE'}, 'planCacheKey': 'CD8F6D8F',
-                      'rejectedPlans': []}, 'ok': 1.0,
-                      'operationTime': Timestamp(1595603051, 3)}
+    {
+    '$clusterTime':
+        {
+        'signature': {'keyId': 0, 'hash': b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'},
+        'clusterTime': Timestamp(1595603051, 3)},
+        'serverInfo': {'host': 'Juliuss-MBP.verizon.net', 'version': '4.4.0-rc13', 'port': 27017, 'gitVersion': '27f5c1ee9f513f29fe30b8ebefed99581428c6e1'},
+        'queryPlanner':
+            {
+            'plannerVersion': 1,
+            'queryHash': 'CD8F6D8F',
+            'parsedQuery': {'$and': [
+                {'category': {'$eq': 'apparel'}},
+                {'quantity': {'$eq': 1057}}
+                ]
+            },
+            'namespace': 'db.products',
+            'indexFilterSet': False,
+            'winningPlan':{
+                'inputStage':
+                    {'filter':
+                        {'$and': [
+                            {'category': {'$eq': 'apparel'}},
+                            {'quantity': {'$eq': 1057}}
+                            ]
+                        },
+               'stage': 'COLLSCAN', 'direction': 'forward'},
+               'stage': 'UPDATE'}, 'planCacheKey': 'CD8F6D8F',
+               'rejectedPlans': []},
+           'ok': 1.0,
+           'operationTime': Timestamp(1595603051, 3)
+            }
 
 
 Since ``ExplainCollection`` instances provide all the same methods provided by ``Collection`` instances, explaining operations in your application code is a simple matter of replacing ``Collection`` instances in your application code with ``ExplainCollection`` instances.
