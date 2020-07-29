@@ -114,8 +114,15 @@ Given a script that contains ``pymongo`` commands within it, you can simply run:
 
     python3 -m pymongoexplain <path/to/your/script.py>
 
-This will print out the explain output for every single command
-within that script, in addition to running the script itself.
+This will log the explain output for every single command
+within the specified script, **in addition to running every command** in the script itself. Do note that because the
+explain output is generated using the `logging <https://docs.python.org/3/library/logging.html>`_ module,
+if your script configures logging module there are certain things to keep in mind:
+
+- if your script sets the `logging level <https://docs.python.org/3/library/logging.html#logging-levels>`_
+    higher than INFO, the explain output will be suppressed entirely.
+- the explain output will be sent to whatever stream your script configures the logging module to send output to.
+
 
 Any positional parameters or arguments required by your script can be
 simply be appended to the invocation as follows::
