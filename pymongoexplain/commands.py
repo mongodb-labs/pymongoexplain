@@ -47,7 +47,7 @@ def _index_document(index_list):
     for (key, value) in index_list:
         if not isinstance(key, str):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (str, int, Document)):
+        if not isinstance(value, (str, int, dict, SON)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', 'geoHaystack', or another valid MongoDB "
                             "index specifier.")
@@ -64,7 +64,7 @@ def _fields_list_to_dict(fields, option_name):
 
     ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
     """
-    if isinstance(fields, Document):
+    if isinstance(fields, (dict, SON)):
         return fields
 
     if isinstance(fields, (list, set)):
