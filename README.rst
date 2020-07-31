@@ -12,17 +12,17 @@ About
 This package provides an ``ExplainCollection`` class that allows PyMongo's Collection methods to be explained_
 
 PyMongoExplain greatly simplifies the amount of effort needed to explain commands.
-For example, suppose we wanted to explain the following ``update_one``: ::
+For example, suppose we wanted to explain the following ``update_one`` ::
 
     collection.update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
 
 
-Before PyMongoExplain, one would need to convert the update_one into the equivalent MongoDB command: ::
+Before PyMongoExplain, one would need to convert the update_one into the equivalent MongoDB command ::
 
     collection.database.command(SON([('explain', SON([('update', 'products'), ('updates', [{'q': {'quantity': 1057, 'category': 'apparel'}, 'upsert': False, 'multi': False, 'u': {'$set': {'reorder': True}}}])])), ('verbosity', 'queryPlanner')]))
 
 
-After PyMongoExplain: ::
+After PyMongoExplain ::
 
     ExplainCollection(collection).update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
 
