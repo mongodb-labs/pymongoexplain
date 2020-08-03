@@ -12,7 +12,7 @@ About
 This package provides an ``ExplainCollection`` class that allows PyMongo's Collection methods to be explained_
 
 PyMongoExplain greatly simplifies the amount of effort needed to explain commands.
-For example, suppose we wanted to explain the following ``update_one`` ::
+For example, suppose we wanted to explain the following ``update_one``::
 
     collection.update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
 
