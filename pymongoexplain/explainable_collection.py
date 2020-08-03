@@ -25,7 +25,7 @@ from .commands import AggregateCommand, FindCommand, CountCommand, \
 Document = Union[dict, SON]
 
 
-class ExplainCollection():
+class ExplainableCollection():
     def __init__(self, collection):
         self.collection = collection
         self.last_cmd_payload = None
@@ -184,6 +184,10 @@ class ExplainCollection():
                                 hint=hint, collation=collation, multi=False, upsert=upsert)
 
         return self._explain_command(command)
+
+
+# Alias
+ExplainCollection = ExplainableCollection
 
 
 
