@@ -213,5 +213,11 @@ class TestExplainableCollection(unittest.TestCase):
         self.assertNotEqual(res.stdout, "")
         self.assertTrue(res.returncode == 0)
 
+    def test_imports(self):
+        from pymongoexplain import ExplainCollection
+        from pymongoexplain import ExplainableCollection
+        self.assertEqual(ExplainableCollection, ExplainCollection)
+
+
 if __name__ == '__main__':
     unittest.main()

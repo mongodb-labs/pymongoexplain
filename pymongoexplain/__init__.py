@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymongoexplain.explainable_collection import ExplainCollection
+from .explainable_collection import ExplainableCollection, ExplainCollection
+
