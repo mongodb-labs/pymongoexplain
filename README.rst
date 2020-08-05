@@ -11,12 +11,27 @@ About
 =====
 This package provides an ``ExplainCollection`` class that allows PyMongo's Collection methods to be explained_
 
+PyMongoExplain greatly simplifies the amount of effort needed to explain commands.
+For example, suppose we wanted to explain the following ``update_one``::
+
+    collection.update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
+
+
+Before PyMongoExplain, one would need to convert the update_one into the equivalent MongoDB command::
+
+    collection.database.command(SON([('explain', SON([('update', 'products'), ('updates', [{'q': {'quantity': 1057, 'category': 'apparel'}, 'upsert': False, 'multi': False, 'u': {'$set': {'reorder': True}}}])])), ('verbosity', 'queryPlanner')]))
+
+
+After PyMongoExplain::
+
+    ExplainCollection(collection).update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
+
 .. _explained: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.
 
 Installation
 ============
 
-To install this package simply use pip: ::
+To install this package simply use pip::
 
     pip install pymongoexplain
 
@@ -110,7 +125,7 @@ Explaining commands in a script
 -------------------------------
 
 You can also run explain on all commands within a Python script using our CLI tool.
-Given a script that contains ``pymongo`` commands within it, you can simply run: ::
+Given a script that contains ``pymongo`` commands within it, you can simply run::
 
     python3 -m pymongoexplain <path/to/your/script.py>
 
