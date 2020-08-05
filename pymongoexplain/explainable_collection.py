@@ -25,17 +25,31 @@ from .commands import AggregateCommand, FindCommand, CountCommand, \
 Document = Union[dict, SON]
 
 
+class ExplainResult():
+    def __init__(self, result_document):
+        self.result_document = result_document
+        self.operation_time = result_document['operationTime']
+
+    def __iter__(self):
+        return iter(self.result_document)
+
+    def __getitem__(self, key):
+        return self.result_document[key]
+
+
 class ExplainCollection():
     def __init__(self, collection):
         self.collection = collection
         self.last_cmd_payload = None
+
+
 
     def _explain_command(self, command):
         command_son = command.get_SON()
         explain_command = SON([("explain", command_son)])
         explain_command["verbosity"] = "queryPlanner"
         self.last_cmd_payload = command_son
-        return self.collection.database.command(explain_command)
+        return ExplainResult(self.collection.database.command(explain_command))
 
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
