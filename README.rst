@@ -38,7 +38,7 @@ To install this package simply use pip::
 Support / Feedback
 ==================
 
-For questions, discussions, or general technical support, visit the MongoDB Community Forums.
+For questions, discussions, or general technical support, visit the `MongoDB Community Forums <https://developer.mongodb.com/community/forums/tag/python>`_.
 The MongoDB Community Forums are a centralized place to connect with other MongoDB users, ask questions, and get answers.
 
 Bugs / Feature Requests
@@ -88,6 +88,8 @@ but using this class to run operations runs explain on them, instead of executin
 
 To run explain on a command, first instantiate an ``ExplainCollection`` from the ``Collection`` object originally used to run the command::
 
+    from pymongoexplain import ExplainCollection
+
     collection = client.db.products
     explain = ExplainCollection(collection)
 
@@ -134,9 +136,9 @@ within the specified script, **in addition to running every command** in the scr
 explain output is generated using the `logging <https://docs.python.org/3/library/logging.html>`_ module,
 if your script configures logging module there are certain things to keep in mind:
 
-- if your script sets the `logging level <https://docs.python.org/3/library/logging.html#logging-levels>`_
-    higher than INFO, the explain output will be suppressed entirely.
-- the explain output will be sent to whatever stream your script configures the logging module to send output to.
+    - if your script sets the `logging level <https://docs.python.org/3/library/logging.html#logging-levels>`_
+        higher than INFO, the explain output will be suppressed entirely.
+    - the explain output will be sent to whatever stream your script configures the logging module to send output to.
 
 
 Any positional parameters or arguments required by your script can be
@@ -145,3 +147,11 @@ simply be appended to the invocation as follows::
     python3 -m pymongoexplain <path/to/your/script.py> [PARAMS] [--optname OPTS]
 
 
+Limitations
+-----------
+This package does not support the fluent `Cursor API <https://api.mongodb.com/python/current/api/pymongo/cursor.html>`_,
+so if you attempt to use it like so::
+
+    ExplainCollection(collection).find({}).sort(...)
+
+it will fail.
