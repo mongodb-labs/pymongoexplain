@@ -9,7 +9,7 @@ PyMongoExplain
 
 About
 =====
-This package provides an ``ExplainCollection`` class that allows PyMongo's Collection methods to be explained_
+This package provides an ``ExplainableCollection`` class that allows PyMongo's Collection methods to be explained_
 
 PyMongoExplain greatly simplifies the amount of effort needed to explain commands.
 For example, suppose we wanted to explain the following ``update_one``::
@@ -24,7 +24,7 @@ Before PyMongoExplain, one would need to convert the update_one into the equival
 
 After PyMongoExplain::
 
-    ExplainCollection(collection).update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
+    ExplainableCollection(collection).update_one({"quantity": 1057, "category": "apparel"},{"$set": {"reorder": True}})
 
 .. _explained: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.
 
@@ -82,16 +82,16 @@ the root of the distribution.
 Tutorial
 ========
 
-PyMongo operations in existing application code can be explained by swapping ``Collection`` objects with ``ExplainCollection``
-objects. The ``ExplainCollection`` class provides all CRUD API methods provided by PyMongo's ``Collection``,
+PyMongo operations in existing application code can be explained by swapping ``Collection`` objects with ``ExplainableCollection``
+objects. The ``ExplainableCollection`` class provides all CRUD API methods provided by PyMongo's ``Collection``,
 but using this class to run operations runs explain on them, instead of executing them.
 
-To run explain on a command, first instantiate an ``ExplainCollection`` from the ``Collection`` object originally used to run the command::
+To run explain on a command, first instantiate an ``ExplainableCollection`` from the ``Collection`` object originally used to run the command::
 
-    from pymongoexplain import ExplainCollection
+    from pymongoexplain import ExplainableCollection
 
     collection = client.db.products
-    explain = ExplainCollection(collection)
+    explain = ExplainableCollection(collection)
 
 Now you are ready to explain some commands. Remember that explaining a command does not execute it::
 
@@ -120,7 +120,7 @@ Now ``result`` will contain the output of running explain on the given ``update_
                     'version': '4.4.0-rc13'}}
 
 
-Since ``ExplainCollection`` instances provide all the same methods provided by ``Collection`` instances, explaining operations in your application code is a simple matter of replacing ``Collection`` instances in your application code with ``ExplainCollection`` instances.
+Since ``ExplainableCollection`` instances provide all the same methods provided by ``Collection`` instances, explaining operations in your application code is a simple matter of replacing ``Collection`` instances in your application code with ``ExplainableCollection`` instances.
 
 
 Explaining commands in a script
@@ -151,8 +151,8 @@ Limitations
 This package does not support the fluent `Cursor API <https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html>`_,
 so if you attempt to use it like so::
 
-    ExplainCollection(collection).find({}).sort(...)
+    ExplainableCollection(collection).find({}).sort(...)
 
 Instead pass all the arguments to the find() call, like so::
 
-    ExplainCollection(collection).find({}, sort=...)
+    ExplainableCollection(collection).find({}, sort=...)
