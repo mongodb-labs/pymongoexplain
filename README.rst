@@ -45,7 +45,7 @@ Bugs / Feature Requests
 =======================
 
 Think you’ve found a bug? Want to see a new feature in PyMongoExplain?
-Please open an issue on this GitHub repository.
+Please open an issue on this `GitHub repository <https://github.com/mongodb-labs/pymongoexplain>`_.
 
 How To Ask For Help
 -------------------
@@ -136,10 +136,8 @@ within the specified script, **in addition to running every command** in the scr
 explain output is generated using the `logging <https://docs.python.org/3/library/logging.html>`_ module,
 if your script configures logging module there are certain things to keep in mind:
 
-    - if your script sets the `logging level <https://docs.python.org/3/library/logging.html#logging-levels>`_
-        higher than INFO, the explain output will be suppressed entirely.
-    - the explain output will be sent to whatever stream your script configures the logging module to send output to.
-
+- if your script sets the `logging level <https://docs.python.org/3/library/logging.html#logging-levels>`_ higher than INFO, the explain output will be suppressed entirely.
+- the explain output will be sent to whatever stream your script configures the logging module to send output to.
 
 Any positional parameters or arguments required by your script can be
 simply be appended to the invocation as follows::
@@ -149,9 +147,12 @@ simply be appended to the invocation as follows::
 
 Limitations
 -----------
-This package does not support the fluent `Cursor API <https://api.mongodb.com/python/current/api/pymongo/cursor.html>`_,
+
+This package does not support the fluent `Cursor API <https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html>`_,
 so if you attempt to use it like so::
 
     ExplainCollection(collection).find({}).sort(...)
 
-it will fail.
+Instead pass all the arguments to the find() call, like so::
+
+    ExplainCollection(collection).find({}, sort=...)
