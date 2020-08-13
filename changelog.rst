@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Changes in version 1.1.0
+Changes in version 1.1.1
 ------------------------
 - ``ExplainCollection`` now importable from top level like so: ``from pymongoexplain import ExplainCollection``
 - Added aliases so that now both ``ExplainCollection`` and ``ExplainableCollection`` are importable
