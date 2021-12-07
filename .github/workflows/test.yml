@@ -3,7 +3,7 @@ name: pymongoexplain
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
