@@ -1,4 +1,4 @@
-# Copyright 2020-present MongoDB, Inc.
+# Copyright 2021-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,36 +14,19 @@
 
 """Utilities for testing driver specs."""
 
-import copy
-import sys
+import functools
+import threading
 
-from pymongoexplain.explainable_collection import ExplainCollection, Document
-from pymongo import monitoring
-
-class CommandLogger(monitoring.CommandListener):
-    def __init__(self):
-        self.cmd_payload = {}
-    def started(self, event):
-        self.cmd_payload = event.command
-
-    def succeeded(self, event):
-        pass
-
-    def failed(self, event):
-        pass
+from collections import abc
 
 from bson import decode, encode
-from bson.binary import Binary, STANDARD
-from bson.codec_options import CodecOptions
+from bson.binary import Binary
 from bson.int64 import Int64
-from bson.py3compat import iteritems, abc, string_type, text_type
 from bson.son import SON
 
 from gridfs import GridFSBucket
 
-from pymongo import (client_session,
-                     helpers,
-                     operations)
+from pymongo import client_session
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import (BulkWriteError,
@@ -56,14 +39,50 @@ from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
                   client_knobs,
-                  IntegrationTest,
-                  unittest)
+                  IntegrationTest)
 from test.utils import (camel_to_snake,
                         camel_to_snake_args,
-                        camel_to_upper_camel,
                         CompareType,
+                        CMAPListener,
                         OvertCommandListener,
-                        rs_client, parse_read_preference)
+                        parse_spec_options,
+                        prepare_spec_arguments,
+                        rs_client,
+                        ServerAndTopologyEventListener)
+
+
+class SpecRunnerThread(threading.Thread):
+    def __init__(self, name):
+        super(SpecRunnerThread, self).__init__()
+        self.name = name
+        self.exc = None
+        self.setDaemon(True)
+        self.cond = threading.Condition()
+        self.ops = []
+        self.stopped = False
+
+    def schedule(self, work):
+        self.ops.append(work)
+        with self.cond:
+            self.cond.notify()
+
+    def stop(self):
+        self.stopped = True
+        with self.cond:
+            self.cond.notify()
+
+    def run(self):
+        while not self.stopped or self.ops:
+            if not self. ops:
+                with self.cond:
+                    self.cond.wait(10)
+            if self.ops:
+                try:
+                    work = self.ops.pop(0)
+                    work()
+                except Exception as exc:
+                    self.exc = exc
+                    self.stop()
 
 
 class SpecRunner(IntegrationTest):
@@ -74,7 +93,8 @@ class SpecRunner(IntegrationTest):
         cls.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
-        cls.knobs = client_knobs(min_heartbeat_interval=0.1)
+        cls.knobs = client_knobs(heartbeat_frequency=0.1,
+                                 min_heartbeat_interval=0.1)
         cls.knobs.enable()
 
     @classmethod
@@ -84,7 +104,10 @@ class SpecRunner(IntegrationTest):
 
     def setUp(self):
         super(SpecRunner, self).setUp()
+        self.targets = {}
         self.listener = None
+        self.pool_listener = None
+        self.server_listener = None
         self.maxDiff = None
 
     def _set_fail_point(self, client, command_args):
@@ -93,11 +116,9 @@ class SpecRunner(IntegrationTest):
         client.admin.command(cmd)
 
     def set_fail_point(self, command_args):
-        cmd = SON([('configureFailPoint', 'failCommand')])
-        cmd.update(command_args)
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
-            self._set_fail_point(client, cmd)
+            self._set_fail_point(client, command_args)
 
     def targeted_fail_point(self, session, fail_point):
         """Run the targetedFailPoint test operation.
@@ -223,50 +244,7 @@ class SpecRunner(IntegrationTest):
 
     @staticmethod
     def parse_options(opts):
-        if 'readPreference' in opts:
-            opts['read_preference'] = parse_read_preference(
-                opts.pop('readPreference'))
-
-        if 'writeConcern' in opts:
-            opts['write_concern'] = WriteConcern(
-                **dict(opts.pop('writeConcern')))
-
-        if 'readConcern' in opts:
-            opts['read_concern'] = ReadConcern(
-                **dict(opts.pop('readConcern')))
-
-        if 'maxTimeMS' in opts:
-            opts['max_time_ms'] = opts.pop('maxTimeMS')
-
-        if 'maxCommitTimeMS' in opts:
-            opts['max_commit_time_ms'] = opts.pop('maxCommitTimeMS')
-
-        if 'hint' in opts:
-            hint = opts.pop('hint')
-            if not isinstance(hint, string_type):
-                hint = list(iteritems(hint))
-            opts['hint'] = hint
-
-        # Properly format 'hint' arguments for the Bulk API tests.
-        if 'requests' in opts:
-            reqs = opts.pop('requests')
-            for req in reqs:
-                args = req.pop('arguments')
-                if 'hint' in args:
-                    hint = args.pop('hint')
-                    if not isinstance(hint, string_type):
-                        hint = list(iteritems(hint))
-                    args['hint'] = hint
-                req['arguments'] = args
-            opts['requests'] = reqs
-
-        return dict(opts)
-
-    def _compare_command_dicts(self, ours, theirs):
-        print(ours)
-        print(theirs)
-        for key in ours.keys():
-            self.assertEqual(ours[key], theirs[key])
+        return parse_spec_options(opts)
 
     def run_operation(self, sessions, collection, operation):
         original_collection = collection
@@ -277,6 +255,10 @@ class SpecRunner(IntegrationTest):
             name = 'open_download_stream_by_name'
         elif name == 'download':
             name = 'open_download_stream'
+        elif name == 'map_reduce':
+            self.skipTest('PyMongo does not support mapReduce')
+        elif name == 'count':
+            self.skipTest('PyMongo does not support count')
 
         database = collection.database
         collection = database.get_collection(collection.name)
@@ -288,9 +270,7 @@ class SpecRunner(IntegrationTest):
         if object_name == 'gridfsbucket':
             # Only create the GridFSBucket when we need it (for the gridfs
             # retryable reads tests).
-            obj = GridFSBucket(
-                database, bucket_name=collection.name,
-                disable_md5=True)
+            obj = GridFSBucket(database, bucket_name=collection.name)
         else:
             objects = {
                 'client': database.client,
@@ -306,68 +286,23 @@ class SpecRunner(IntegrationTest):
         arguments.update(arguments.pop("options", {}))
         self.parse_options(arguments)
 
-
         cmd = getattr(obj, name)
-        if name != "bulk_write" and object_name == "collection":
-            wrapped_collection = ExplainCollection(obj)
-            explain_cmd = getattr(wrapped_collection, name)
 
-        for arg_name in list(arguments):
-            c2s = camel_to_snake(arg_name)
-            # PyMongo accepts sort as list of tuples.
-            if arg_name == "sort":
-                sort_dict = arguments[arg_name]
-                arguments[arg_name] = list(iteritems(sort_dict))
-            # Named "key" instead not fieldName.
-            if arg_name == "fieldName":
-                arguments["key"] = arguments.pop(arg_name)
-            # Aggregate uses "batchSize", while find uses batch_size.
-            elif ((arg_name == "batchSize" or arg_name == "allowDiskUse") and
-                  name == "aggregate"):
-                continue
-            # Requires boolean returnDocument.
-            elif arg_name == "returnDocument":
-                arguments[c2s] = arguments.pop(arg_name) == "After"
-            elif c2s == "requests":
-                # Parse each request into a bulk write model.
-                requests = []
-                for request in arguments["requests"]:
-                    bulk_model = camel_to_upper_camel(request["name"])
-                    bulk_class = getattr(operations, bulk_model)
-                    bulk_arguments = camel_to_snake_args(request["arguments"])
-                    requests.append(bulk_class(**dict(bulk_arguments)))
-                arguments["requests"] = requests
-            elif arg_name == "session":
-                arguments['session'] = sessions[arguments['session']]
-            elif name == 'command' and arg_name == 'command':
-                # Ensure the first key is the command name.
-                ordered_command = SON([(operation['command_name'], 1)])
-                ordered_command.update(arguments['command'])
-                arguments['command'] = ordered_command
-            elif name == 'open_download_stream' and arg_name == 'id':
-                arguments['file_id'] = arguments.pop(arg_name)
-            elif name != 'find' and c2s == 'max_time_ms':
-                # find is the only method that accepts snake_case max_time_ms.
-                # All other methods take kwargs which must use the server's
-                # camelCase maxTimeMS. See PYTHON-1855.
-                arguments['maxTimeMS'] = arguments.pop('max_time_ms')
-            elif name == 'with_transaction' and arg_name == 'callback':
-                callback_ops = arguments[arg_name]['operations']
-                arguments['callback'] = lambda _: self.run_operations(
-                    sessions, original_collection, copy.deepcopy(callback_ops),
-                    in_with_transaction=True)
-            elif name == 'drop_collection' and arg_name == 'collection':
-                arguments['name_or_collection'] = arguments.pop(arg_name)
-            elif name == 'create_collection' and arg_name == 'collection':
-                arguments['name'] = arguments.pop(arg_name)
-            elif name == 'create_index' and arg_name == 'keys':
-                arguments['keys'] = list(arguments.pop(arg_name).items())
-            elif name == 'drop_index' and arg_name == 'name':
-                arguments['index_or_name'] = arguments.pop(arg_name)
-            else:
-                arguments[c2s] = arguments.pop(arg_name)
+        with_txn_callback = functools.partial(
+            self.run_operations, sessions, original_collection,
+            in_with_transaction=True)
+        prepare_spec_arguments(operation, arguments, name, sessions,
+                               with_txn_callback)
 
+        if name == 'run_on_thread':
+            args = {'sessions': sessions, 'collection': collection}
+            args.update(arguments)
+            arguments = args
         result = cmd(**dict(arguments))
+
+        # Cleanup open change stream cursors.
+        if name == "watch":
+            self.addCleanup(result.close)
 
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
@@ -376,65 +311,60 @@ class SpecRunner(IntegrationTest):
                     arguments["pipeline"][-1]["$out"],
                     read_preference=ReadPreference.PRIMARY)
                 return out.find()
-        if name == "map_reduce":
-            if isinstance(result, dict) and 'results' in result:
-                return result['results']
         if 'download' in name:
             result = Binary(result.read())
 
         if isinstance(result, Cursor) or isinstance(result, CommandCursor):
             return list(result)
 
-        cmd_payload = self.command_logger.cmd_payload
-        if name != "bulk_write" and object_name == "collection":
-            explain_cmd(**dict(arguments))
-            self._compare_command_dicts(wrapped_collection.last_cmd_payload,
-                                        cmd_payload)
         return result
 
     def allowable_errors(self, op):
         """Allow encryption spec to override expected error classes."""
         return (PyMongoError,)
 
+    def _run_op(self, sessions, collection, op, in_with_transaction):
+        expected_result = op.get('result')
+        if expect_error(op):
+            with self.assertRaises(self.allowable_errors(op),
+                                   msg=op['name']) as context:
+                self.run_operation(sessions, collection, op.copy())
+
+            if expect_error_message(expected_result):
+                if isinstance(context.exception, BulkWriteError):
+                    errmsg = str(context.exception.details).lower()
+                else:
+                    errmsg = str(context.exception).lower()
+                self.assertIn(expected_result['errorContains'].lower(),
+                              errmsg)
+            if expect_error_code(expected_result):
+                self.assertEqual(expected_result['errorCodeName'],
+                                 context.exception.details.get('codeName'))
+            if expect_error_labels_contain(expected_result):
+                self.assertErrorLabelsContain(
+                    context.exception,
+                    expected_result['errorLabelsContain'])
+            if expect_error_labels_omit(expected_result):
+                self.assertErrorLabelsOmit(
+                    context.exception,
+                    expected_result['errorLabelsOmit'])
+
+            # Reraise the exception if we're in the with_transaction
+            # callback.
+            if in_with_transaction:
+                raise context.exception
+        else:
+            result = self.run_operation(sessions, collection, op.copy())
+            if 'result' in op:
+                if op['name'] == 'runCommand':
+                    self.check_command_result(expected_result, result)
+                else:
+                    self.check_result(expected_result, result)
+
     def run_operations(self, sessions, collection, ops,
                        in_with_transaction=False):
         for op in ops:
-            expected_result = op.get('result')
-            if expect_error(op):
-                with self.assertRaises(self.allowable_errors(op),
-                                       msg=op['name']) as context:
-                    self.run_operation(sessions, collection, op.copy())
-
-                if expect_error_message(expected_result):
-                    if isinstance(context.exception, BulkWriteError):
-                        errmsg = str(context.exception.details).lower()
-                    else:
-                        errmsg = str(context.exception).lower()
-                    self.assertIn(expected_result['errorContains'].lower(),
-                                  errmsg)
-                if expect_error_code(expected_result):
-                    self.assertEqual(expected_result['errorCodeName'],
-                                     context.exception.details.get('codeName'))
-                if expect_error_labels_contain(expected_result):
-                    self.assertErrorLabelsContain(
-                        context.exception,
-                        expected_result['errorLabelsContain'])
-                if expect_error_labels_omit(expected_result):
-                    self.assertErrorLabelsOmit(
-                        context.exception,
-                        expected_result['errorLabelsOmit'])
-
-                # Reraise the exception if we're in the with_transaction
-                # callback.
-                if in_with_transaction:
-                    raise context.exception
-            else:
-                result = self.run_operation(sessions, collection, op.copy())
-                if 'result' in op:
-                    if op['name'] == 'runCommand':
-                        self.check_command_result(expected_result, result)
-                    else:
-                        self.check_result(expected_result, result)
+            self._run_op(sessions, collection, op, in_with_transaction)
 
     # TODO: factor with test_command_monitoring.py
     def check_events(self, test, listener, session_ids):
@@ -506,7 +436,7 @@ class SpecRunner(IntegrationTest):
 
     def maybe_skip_scenario(self, test):
         if test.get('skipReason'):
-            raise unittest.SkipTest(test.get('skipReason'))
+            self.skipTest(test.get('skipReason'))
 
     def get_scenario_db_name(self, scenario_def):
         """Allow subclasses to override a test's database name."""
@@ -546,8 +476,29 @@ class SpecRunner(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)
+
+        # Kill all sessions before and after each test to prevent an open
+        # transaction (from a test failure) from blocking collection/database
+        # operations during test set up and tear down.
+        self.kill_all_sessions()
+        self.addCleanup(self.kill_all_sessions)
+        self.setup_scenario(scenario_def)
+        database_name = self.get_scenario_db_name(scenario_def)
+        collection_name = self.get_scenario_coll_name(scenario_def)
+        # SPEC-1245 workaround StaleDbVersion on distinct
+        for c in self.mongos_clients:
+            c[database_name][collection_name].distinct("x")
+
+        # Configure the fail point before creating the client.
+        if 'failPoint' in test:
+            fp = test['failPoint']
+            self.set_fail_point(fp)
+            self.addCleanup(self.set_fail_point, {
+                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
+
         listener = OvertCommandListener()
-        self.command_logger = CommandLogger()
+        pool_listener = CMAPListener()
+        server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test['clientOptions'])
         # MMAPv1 does not support retryable writes.
@@ -555,30 +506,22 @@ class SpecRunner(IntegrationTest):
                 client_context.storage_engine == 'mmapv1'):
             self.skipTest("MMAPv1 does not support retryWrites=True")
         use_multi_mongos = test['useMultipleMongoses']
-        if client_context.is_mongos and use_multi_mongos:
-            client = rs_client(client_context.mongos_seeds(),
-                               event_listeners=[listener, self.command_logger],
-                               **client_options)
-        else:
-            client = rs_client(event_listeners=[listener, self.command_logger],
-                               **client_options)
+        host = None
+        if use_multi_mongos:
+            if client_context.load_balancer or client_context.serverless:
+                host = client_context.MULTI_MONGOS_LB_URI
+            elif client_context.is_mongos:
+                host = client_context.mongos_seeds()
+        client = rs_client(
+            h=host,
+            event_listeners=[listener, pool_listener, server_listener],
+            **client_options)
+        self.scenario_client = client
         self.listener = listener
+        self.pool_listener = pool_listener
+        self.server_listener = server_listener
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
-
-        # Kill all sessions before and after each test to prevent an open
-        # transaction (from a test failure) from blocking collection/database
-        # operations during test set up and tear down.
-        self.kill_all_sessions()
-        self.addCleanup(self.kill_all_sessions)
-
-        database_name = self.get_scenario_db_name(scenario_def)
-        collection_name = self.get_scenario_coll_name(scenario_def)
-        self.setup_scenario(scenario_def)
-
-        # SPEC-1245 workaround StaleDbVersion on distinct
-        for c in self.mongos_clients:
-            c[database_name][collection_name].distinct("x")
 
         # Create session0 and session1.
         sessions = {}
@@ -603,14 +546,6 @@ class SpecRunner(IntegrationTest):
             session_ids[session_name] = s.session_id
 
         self.addCleanup(end_sessions, sessions)
-
-        if 'failPoint' in test:
-            fp = test['failPoint']
-            self.set_fail_point(fp)
-            self.addCleanup(self.set_fail_point, {
-                'configureFailPoint': fp['configureFailPoint'], 'mode': 'off'})
-
-        listener.results.clear()
 
         collection = client[database_name][collection_name]
         self.run_test_ops(sessions, collection, test)
@@ -645,6 +580,7 @@ class SpecRunner(IntegrationTest):
             # CompareType(Binary) doesn't work.
             self.assertEqual(wrap_types(expected_c['data']), actual_data)
 
+
 def expect_any_error(op):
     if isinstance(op, dict):
         return op.get('error')
@@ -654,7 +590,7 @@ def expect_any_error(op):
 
 def expect_error_message(expected_result):
     if isinstance(expected_result, dict):
-        return isinstance(expected_result['errorContains'], text_type)
+        return isinstance(expected_result['errorContains'], str)
 
     return False
 
@@ -695,13 +631,10 @@ def end_sessions(sessions):
         s.end_session()
 
 
-OPTS = CodecOptions(document_class=dict, uuid_representation=STANDARD)
-
-
 def decode_raw(val):
     """Decode RawBSONDocuments in the given container."""
     if isinstance(val, (list, abc.Mapping)):
-        return decode(encode({'v': val}, codec_options=OPTS), OPTS)['v']
+        return decode(encode({'v': val}))['v']
     return val
 
 
