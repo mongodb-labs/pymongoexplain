@@ -9,6 +9,7 @@ jobs:
       matrix:
         python-version: ["3.5", "3.6", "3.7", "3.8", "pypy-3.7"]
         mongodb-version: ["4.4"]
+        pymongo-version: ["3.11.0", "4.0.0"]
 
     steps:
       - uses: actions/checkout@v2
@@ -20,8 +21,15 @@ jobs:
         uses: supercharge/mongodb-github-action@1.7.0
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
+      # add caching to reduce bandwidth and save time
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - name: Test with python
         run: |
-          python -m pip install pymongo==3.11.0
+          python -m pip install pymongo==${{ matrix.pymongo-version }}
           python -m pip install -e .
           python setup.py test
