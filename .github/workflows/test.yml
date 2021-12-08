@@ -10,6 +10,7 @@ jobs:
         python-version: ["3.5", "3.6", "3.7", "3.8", "pypy-3.7"]
         mongodb-version: ["4.4"]
         pymongo-version: ["v3.11", "v4.0"]
+        # pymongo 4.0 does not support python 3.5
         exclude:
           - python-version: "3.5"
             pymongo-version: "v4.0"
@@ -36,7 +37,6 @@ jobs:
           cd ..
           git clone -b ${{ matrix.pymongo-version }} --single-branch https://github.com/mongodb/mongo-python-driver.git
           cd mongo-python-driver
-          git checkout ${{ matrix.pymongo-version }}
           python -m pip install -e .
           cp test/utils_spec_runner.py ../pymongoexplain/test/
           cp test/utils.py ../pymongoexplain/test/
