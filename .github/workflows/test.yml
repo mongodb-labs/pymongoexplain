@@ -10,6 +10,9 @@ jobs:
         python-version: ["3.5", "3.6", "3.7", "3.8", "pypy-3.7"]
         mongodb-version: ["4.4"]
         pymongo-version: ["v3.11", "v4.0"]
+        exclude:
+          - python-version: "3.5"
+            mongodb-version: "v4.0"
 
     steps:
       - uses: actions/checkout@v2
