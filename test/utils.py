@@ -1,4 +1,4 @@
-# Copyright 2021-present MongoDB, Inc.
+# Copyright 2012-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,9 +38,46 @@ from pymongo import (MongoClient,
                      monitoring, operations, read_preferences)
 from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.hello import HelloCompat
+try:
+    from pymongo.hello import HelloCompat
+except ModuleNotFoundError:
+    class HelloCompat:
+        LEGACY_CMD = "ismaster"
 from pymongo.monitoring import _SENSITIVE_COMMANDS
-from pymongo.pool import _CancellationContext, _PoolGeneration
+
+try:
+    from pymongo.pool import _CancellationContext, _PoolGeneration
+except ImportError:
+    class _PoolGeneration(object):
+        def __init__(self):
+            # Maps service_id to generation.
+            self._generations = collections.defaultdict(int)
+            # Overall pool generation.
+            self._generation = 0
+
+        def get(self, service_id):
+            """Get the generation for the given service_id."""
+            if service_id is None:
+                return self._generation
+            return self._generations[service_id]
+
+        def get_overall(self):
+            """Get the Pool's overall generation."""
+            return self._generation
+
+        def inc(self, service_id):
+            """Increment the generation for the given service_id."""
+            self._generation += 1
+            if service_id is None:
+                for service_id in self._generations:
+                    self._generations[service_id] += 1
+            else:
+                self._generations[service_id] += 1
+
+        def stale(self, gen, service_id):
+            """Return if the given generation for a given service_id is stale."""
+            return gen != self.get(service_id)
+
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,

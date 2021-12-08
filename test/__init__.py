@@ -48,8 +48,17 @@ import pymongo.errors
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
-from pymongo.hello import HelloCompat
-from pymongo.server_api import ServerApi
+try:
+    from pymongo.hello import HelloCompat
+except ModuleNotFoundError:
+    class HelloCompat:
+        LEGACY_CMD = "ismaster"
+HAVE_SERVERAPI = True
+try:
+    from pymongo.server_api import ServerApi
+except ModuleNotFoundError:
+    HAVE_SERVERAPI = False
+
 from pymongo.ssl_support import HAVE_SSL, _ssl
 from pymongo.uri_parser import parse_uri
 from test.version import Version
@@ -258,7 +267,7 @@ class ClientContext(object):
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
-        if MONGODB_API_VERSION:
+        if MONGODB_API_VERSION and HAVE_SERVERAPI:
             server_api = ServerApi(MONGODB_API_VERSION)
             self.default_client_options["server_api"] = server_api
 
