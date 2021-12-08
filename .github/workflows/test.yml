@@ -35,7 +35,8 @@ jobs:
           cd mongo-python-driver
           git checkout ${{ matrix.pymongo-version }}
           python -m pip install -e .
-          cp test/{utils_spec_runner.py, utils.py, __init__.py} ../pymongoexplain/test/
+          cp test/{utils_spec_runner, utils, __init__}.py .
+          ./pymongoexplain/test/
           cd ../pymongoexplain
           python -m pip install -e .
           python setup.py test
