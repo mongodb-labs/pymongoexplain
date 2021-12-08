@@ -50,13 +50,13 @@ from pymongo import common, message
 from pymongo.common import partition_node
 try:
     from pymongo.hello import HelloCompat
-except ModuleNotFoundError:
+except ImportError:
     class HelloCompat:
         LEGACY_CMD = "ismaster"
 HAVE_SERVERAPI = True
 try:
     from pymongo.server_api import ServerApi
-except ModuleNotFoundError:
+except ImportError:
     HAVE_SERVERAPI = False
 
 from pymongo.ssl_support import HAVE_SSL, _ssl

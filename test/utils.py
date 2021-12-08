@@ -40,7 +40,7 @@ from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
 try:
     from pymongo.hello import HelloCompat
-except ModuleNotFoundError:
+except ImportError:
     class HelloCompat:
         LEGACY_CMD = "ismaster"
 from pymongo.monitoring import _SENSITIVE_COMMANDS
