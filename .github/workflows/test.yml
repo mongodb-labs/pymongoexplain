@@ -9,11 +9,11 @@ jobs:
       matrix:
         python-version: ["3.5", "3.6", "3.7", "3.8", "pypy-3.7"]
         mongodb-version: ["4.4"]
-        pymongo-version: ["v3.11", "v4.0"]
+        pymongo-version: ["3.11.0", "4.0.0"]
         # pymongo 4.0 does not support python 3.5
         exclude:
           - python-version: "3.5"
-            pymongo-version: "v4.0"
+            pymongo-version: "4.0.0"
 
     steps:
       - uses: actions/checkout@v2
