@@ -34,7 +34,7 @@ jobs:
       - name: Test with python
         run: |
           cd ..
-          git clone https://github.com/mongodb/mongo-python-driver.git
+          git clone -b ${{ matrix.pymongo-version }} --single-branch https://github.com/mongodb/mongo-python-driver.git
           cd mongo-python-driver
           git checkout ${{ matrix.pymongo-version }}
           python -m pip install -e .
