@@ -25,6 +25,7 @@ jobs:
         uses: supercharge/mongodb-github-action@1.7.0
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-replica-set: test-rs
       # add caching to reduce bandwidth and save time
       - uses: actions/cache@v2
         with:
