@@ -100,17 +100,26 @@ class ExplainableCollection():
               max_await_time_ms: int = None, batch_size: int = None,
               collation=None, start_at_operation_time=None, session=None,
               start_after=None):
-        change_stream_options = {"start_after":start_after,
-                                 "resume_after":resume_after,
-                                "start_at_operation_time":start_at_operation_time,
-                                 "full_document":full_document}
+
+        change_stream_options = {}
+        if start_after:
+            change_stream_options["startAfter"] = start_after
+        if resume_after:
+            change_stream_options["resumeAfter"] = resume_after
+        if start_at_operation_time:
+            change_stream_options["startAtOperationTime"] = start_at_operation_time
+        if full_document:
+            change_stream_options["fullDocument"] = full_document
+
         if pipeline is not None:
             pipeline = [{"$changeStream": change_stream_options}]+pipeline
         else:
             pipeline = [{"$changeStream": change_stream_options}]
-
+        cursor_args = {}
+        if batch_size:
+            cursor_args["batchSize"] = batch_size
         command = AggregateCommand(self.collection, pipeline,
-                                    {"batch_size":batch_size},
+                                   cursor_args,
                                    {"collation":collation, "max_await_time_ms":
                                        max_await_time_ms})
         return self._explain_command(command)
