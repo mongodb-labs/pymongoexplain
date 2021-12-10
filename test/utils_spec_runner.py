@@ -53,6 +53,7 @@ from test.utils import (camel_to_snake,
 from pymongoexplain import ExplainCollection
 from pymongo import monitoring
 
+
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
         self.cmd_payload = {}
