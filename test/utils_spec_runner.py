@@ -50,6 +50,22 @@ from test.utils import (camel_to_snake,
                         rs_client,
                         ServerAndTopologyEventListener)
 
+from pymongoexplain import ExplainCollection
+from pymongo import monitoring
+
+class CommandLogger(monitoring.CommandListener):
+    def __init__(self):
+        self.cmd_payload = {}
+
+    def started(self, event):
+        self.cmd_payload = event.command
+
+    def succeeded(self, event):
+        pass
+
+    def failed(self, event):
+        pass
+
 
 class SpecRunnerThread(threading.Thread):
     def __init__(self, name):
@@ -246,6 +262,10 @@ class SpecRunner(IntegrationTest):
     def parse_options(opts):
         return parse_spec_options(opts)
 
+    def _compare_command_dicts(self, ours, theirs):
+        for key in ours.keys():
+            self.assertEqual(ours[key], theirs[key])
+
     def run_operation(self, sessions, collection, operation):
         original_collection = collection
         name = camel_to_snake(operation['name'])
@@ -287,7 +307,9 @@ class SpecRunner(IntegrationTest):
         self.parse_options(arguments)
 
         cmd = getattr(obj, name)
-
+        if name != "bulk_write" and object_name == "collection":
+            wrapped_collection = ExplainCollection(obj)
+            explain_cmd = getattr(wrapped_collection, name)
         with_txn_callback = functools.partial(
             self.run_operations, sessions, original_collection,
             in_with_transaction=True)
@@ -316,7 +338,11 @@ class SpecRunner(IntegrationTest):
 
         if isinstance(result, Cursor) or isinstance(result, CommandCursor):
             return list(result)
-
+        cmd_payload = self.command_logger.cmd_payload
+        if name != "bulk_write" and object_name == "collection":
+            explain_cmd(**dict(arguments))
+            self._compare_command_dicts(wrapped_collection.last_cmd_payload,
+                                        cmd_payload)
         return result
 
     def allowable_errors(self, op):
@@ -372,6 +398,8 @@ class SpecRunner(IntegrationTest):
         if not len(test['expectations']):
             return
 
+        res['started'] = [event for event in res['started']
+                          if "explain" not in event.command]
         # Give a nicer message when there are missing or extra events
         cmds = decode_raw([event.command for event in res['started']])
         self.assertEqual(
@@ -499,6 +527,8 @@ class SpecRunner(IntegrationTest):
         listener = OvertCommandListener()
         pool_listener = CMAPListener()
         server_listener = ServerAndTopologyEventListener()
+        command_logger = CommandLogger()
+
         # Create a new client, to avoid interference from pooled sessions.
         client_options = self.parse_client_options(test['clientOptions'])
         # MMAPv1 does not support retryable writes.
@@ -514,12 +544,14 @@ class SpecRunner(IntegrationTest):
                 host = client_context.mongos_seeds()
         client = rs_client(
             h=host,
-            event_listeners=[listener, pool_listener, server_listener],
+            event_listeners=[listener, pool_listener, server_listener,
+                             command_logger],
             **client_options)
         self.scenario_client = client
         self.listener = listener
         self.pool_listener = pool_listener
         self.server_listener = server_listener
+        self.command_logger = command_logger
         # Close the client explicitly to avoid having too many threads open.
         self.addCleanup(client.close)
 
