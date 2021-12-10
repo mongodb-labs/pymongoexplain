@@ -34,6 +34,13 @@ TEST_COLLECTION = 'testcollection'
 
 
 class TestSpec(SpecRunner):
+
+    def run_test_ops(self, sessions, collection, test):
+        self.run_operations(sessions, collection, test['operations'])
+        if not hasattr(self, "command_logger"):
+            raise Exception("You forgot to add in the bits of code that make "
+                            "utils_spec_runner.py test pymongoexplain!")
+
     def get_scenario_db_name(self, scenario_def):
         """Crud spec says database_name is optional."""
         return scenario_def.get('database_name', TEST_DB)
@@ -66,7 +73,6 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
 test_creator.create_tests()
-
 
 if __name__ == "__main__":
     unittest.main()
