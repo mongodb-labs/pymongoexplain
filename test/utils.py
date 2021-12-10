@@ -15,8 +15,8 @@
 """Utilities for testing pymongo
 """
 
-import collections
 import contextlib
+import copy
 import functools
 import os
 import re
@@ -24,43 +24,77 @@ import shutil
 import sys
 import threading
 import time
+import unittest
 import warnings
 
-from collections import defaultdict
+from collections import abc, defaultdict
 from functools import partial
 
-from bson import json_util, py3compat
+from bson import json_util
 from bson.objectid import ObjectId
+from bson.son import SON
 
 from pymongo import (MongoClient,
-                     monitoring, read_preferences)
+                     monitoring, operations, read_preferences)
+from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.monitoring import _SENSITIVE_COMMANDS, ConnectionPoolListener
-from pymongo.pool import PoolOptions
+try:
+    from pymongo.hello import HelloCompat
+except ImportError:
+    class HelloCompat:
+        LEGACY_CMD = "ismaster"
+from pymongo.monitoring import _SENSITIVE_COMMANDS
+
+try:
+    from pymongo.pool import _CancellationContext, _PoolGeneration
+except ImportError:
+    class _PoolGeneration(object):
+        def __init__(self):
+            # Maps service_id to generation.
+            self._generations = collections.defaultdict(int)
+            # Overall pool generation.
+            self._generation = 0
+
+        def get(self, service_id):
+            """Get the generation for the given service_id."""
+            if service_id is None:
+                return self._generation
+            return self._generations[service_id]
+
+        def get_overall(self):
+            """Get the Pool's overall generation."""
+            return self._generation
+
+        def inc(self, service_id):
+            """Increment the generation for the given service_id."""
+            self._generation += 1
+            if service_id is None:
+                for service_id in self._generations:
+                    self._generations[service_id] += 1
+            else:
+                self._generations[service_id] += 1
+
+        def stale(self, gen, service_id):
+            """Return if the given generation for a given service_id is stale."""
+            return gen != self.get(service_id)
+
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
+from pymongo.uri_parser import parse_uri
 
 from test import (client_context,
                   db_user,
                   db_pwd)
 
-_SENSITIVE_COMMANDS.add("explain")
-
-if sys.version_info[0] < 3:
-    # Python 2.7, use our backport.
-    from test.barrier import Barrier
-else:
-    from threading import Barrier
-
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
-class CMAPListener(ConnectionPoolListener):
+class BaseListener(object):
     def __init__(self):
         self.events = []
 
@@ -71,9 +105,26 @@ class CMAPListener(ConnectionPoolListener):
         self.events.append(event)
 
     def event_count(self, event_type):
-        return len([event for event in self.events[:]
-                    if isinstance(event, event_type)])
+        return len(self.events_by_type(event_type))
 
+    def events_by_type(self, event_type):
+        """Return the matching events by event class.
+
+        event_type can be a single class or a tuple of classes.
+        """
+        return self.matching(lambda e: isinstance(e, event_type))
+
+    def matching(self, matcher):
+        """Return the matching events."""
+        return [event for event in self.events[:] if matcher(event)]
+
+    def wait_for_event(self, event, count):
+        """Wait for a number of events to be published, or fail."""
+        wait_until(lambda: self.event_count(event) >= count,
+                   'find %s %s event(s)' % (count, event))
+
+
+class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):
         self.add_event(event)
 
@@ -96,6 +147,9 @@ class CMAPListener(ConnectionPoolListener):
         self.add_event(event)
 
     def pool_created(self, event):
+        self.add_event(event)
+
+    def pool_ready(self, event):
         self.add_event(event)
 
     def pool_cleared(self, event):
@@ -128,23 +182,41 @@ class EventListener(monitoring.CommandListener):
         self.results.clear()
 
 
-class WhiteListEventListener(EventListener):
+class TopologyEventListener(monitoring.TopologyListener):
+    def __init__(self):
+        self.results = defaultdict(list)
+
+    def closed(self, event):
+        self.results['closed'].append(event)
+
+    def description_changed(self, event):
+        self.results['description_changed'].append(event)
+
+    def opened(self, event):
+        self.results['opened'].append(event)
+
+    def reset(self):
+        """Reset the state of this listener."""
+        self.results.clear()
+
+
+class AllowListEventListener(EventListener):
 
     def __init__(self, *commands):
         self.commands = set(commands)
-        super(WhiteListEventListener, self).__init__()
+        super(AllowListEventListener, self).__init__()
 
     def started(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).started(event)
+            super(AllowListEventListener, self).started(event)
 
     def succeeded(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).succeeded(event)
+            super(AllowListEventListener, self).succeeded(event)
 
     def failed(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).failed(event)
+            super(AllowListEventListener, self).failed(event)
 
 
 class OvertCommandListener(EventListener):
@@ -162,8 +234,7 @@ class OvertCommandListener(EventListener):
             super(OvertCommandListener, self).failed(event)
 
 
-class ServerAndTopologyEventListener(monitoring.ServerListener,
-                                     monitoring.TopologyListener):
+class _ServerEventListener(object):
     """Listens to all events."""
 
     def __init__(self):
@@ -187,24 +258,35 @@ class ServerAndTopologyEventListener(monitoring.ServerListener,
         self.results = []
 
 
-class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
+class ServerEventListener(_ServerEventListener,
+                          monitoring.ServerListener):
+    """Listens to Server events."""
+
+
+class ServerAndTopologyEventListener(ServerEventListener,
+                                     monitoring.TopologyListener):
+    """Listens to Server and Topology events."""
+
+
+class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
     """Listens to only server heartbeat events."""
 
-    def __init__(self):
-        self.results = []
-
     def started(self, event):
-        self.results.append(event)
+        self.add_event(event)
 
     def succeeded(self, event):
-        self.results.append(event)
+        self.add_event(event)
 
     def failed(self, event):
-        self.results.append(event)
+        self.add_event(event)
 
 
 class MockSocketInfo(object):
-    def close(self):
+    def __init__(self):
+        self.cancel_context = _CancellationContext()
+        self.more_to_come = False
+
+    def close_socket(self, reason):
         pass
 
     def __enter__(self):
@@ -215,22 +297,32 @@ class MockSocketInfo(object):
 
 
 class MockPool(object):
-    def __init__(self, *args, **kwargs):
-        self.generation = 0
+    def __init__(self, address, options, handshake=True):
+        self.gen = _PoolGeneration()
         self._lock = threading.Lock()
-        self.opts = PoolOptions()
+        self.opts = options
+        self.operation_count = 0
 
-    def get_socket(self, all_credentials):
+    def stale_generation(self, gen, service_id):
+        return self.gen.stale(gen, service_id)
+
+    def get_socket(self, all_credentials, handler=None):
         return MockSocketInfo()
 
     def return_socket(self, *args, **kwargs):
         pass
 
-    def _reset(self):
+    def _reset(self, service_id=None):
         with self._lock:
-            self.generation += 1
+            self.gen.inc(service_id)
 
-    def reset(self):
+    def ready(self):
+        pass
+
+    def reset(self, service_id=None):
+        self._reset()
+
+    def reset_without_pause(self):
         self._reset()
 
     def close(self):
@@ -247,11 +339,11 @@ class ScenarioDict(dict):
     """Dict that returns {} for any unknown key, recursively."""
     def __init__(self, data):
         def convert(v):
-            if isinstance(v, collections.Mapping):
+            if isinstance(v, abc.Mapping):
                 return ScenarioDict(v)
-            if isinstance(v, (py3compat.string_type, bytes)):
+            if isinstance(v, (str, bytes)):
                 return v
-            if isinstance(v, collections.Sequence):
+            if isinstance(v, abc.Sequence):
                 return [convert(item) for item in v]
             return v
 
@@ -339,12 +431,25 @@ class TestCreator(object):
             if max_ver is not None:
                 method = client_context.require_version_max(*max_ver)(method)
 
+        if 'serverless' in scenario_def:
+            serverless = scenario_def['serverless']
+            if serverless == "require":
+                serverless_satisfied = client_context.serverless
+            elif serverless == "forbid":
+                serverless_satisfied = not client_context.serverless
+            else:   # unset or "allow"
+                serverless_satisfied = True
+            method = unittest.skipUnless(
+                serverless_satisfied,
+                "Serverless requirement not satisfied")(method)
+
         return method
 
     @staticmethod
     def valid_topology(run_on_req):
         return client_context.is_topology_type(
-            run_on_req.get('topology', ['single', 'replicaset', 'sharded']))
+            run_on_req.get('topology', ['single', 'replicaset', 'sharded',
+                                        'load-balanced']))
 
     @staticmethod
     def min_server_version(run_on_req):
@@ -362,6 +467,24 @@ class TestCreator(object):
             return client_context.version <= max_ver
         return True
 
+    @staticmethod
+    def valid_auth_enabled(run_on_req):
+        if 'authEnabled' in run_on_req:
+            if run_on_req['authEnabled']:
+                return client_context.auth_enabled
+            return not client_context.auth_enabled
+        return True
+
+    @staticmethod
+    def serverless_ok(run_on_req):
+        serverless = run_on_req['serverless']
+        if serverless == "require":
+            return client_context.serverless
+        elif serverless == "forbid":
+            return not client_context.serverless
+        else:  # unset or "allow"
+            return True
+
     def should_run_on(self, scenario_def):
         run_on = scenario_def.get('runOn', [])
         if not run_on:
@@ -371,7 +494,9 @@ class TestCreator(object):
         for req in run_on:
             if (self.valid_topology(req) and
                     self.min_server_version(req) and
-                    self.max_server_version(req)):
+                    self.max_server_version(req) and
+                    self.valid_auth_enabled(req) and
+                    self.serverless_ok(req)):
                 return True
         return False
 
@@ -420,16 +545,13 @@ class TestCreator(object):
                     setattr(self._test_class, new_test.__name__, new_test)
 
 
-def _connection_string(h, authenticate):
-    if h.startswith("mongodb://"):
+def _connection_string(h):
+    if h.startswith("mongodb://") or h.startswith("mongodb+srv://"):
         return h
-    elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s" % (db_user, db_pwd, str(h))
-    else:
-        return "mongodb://%s" % (str(h),)
+    return "mongodb://%s" % (str(h),)
 
 
-def _mongo_client(host, port, authenticate=True, directConnection=False,
+def _mongo_client(host, port, authenticate=True, directConnection=None,
                   **kwargs):
     """Create a new client over SSL/TLS if necessary."""
     host = host or client_context.host
@@ -437,12 +559,21 @@ def _mongo_client(host, port, authenticate=True, directConnection=False,
     client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
+    if directConnection is not None:
+        client_options['directConnection'] = directConnection
     client_options.update(kwargs)
 
-    client = MongoClient(_connection_string(host, authenticate), port,
-                         **client_options)
+    uri = _connection_string(host)
+    if client_context.auth_enabled and authenticate:
+        # Only add the default username or password if one is not provided.
+        res = parse_uri(uri)
+        if (not res['username'] and not res['password'] and
+                'username' not in client_options and
+                'password' not in client_options):
+            client_options['username'] = db_user
+            client_options['password'] = db_pwd
 
-    return client
+    return MongoClient(uri, port, **client_options)
 
 
 def single_client_noauth(h=None, p=None, **kwargs):
@@ -490,19 +621,19 @@ def ensure_all_connected(client):
     Depending on the use-case, the caller may need to clear any event listeners
     that are configured on the client.
     """
-    ismaster = client.admin.command("isMaster")
-    if 'setName' not in ismaster:
+    hello = client.admin.command(HelloCompat.LEGACY_CMD)
+    if 'setName' not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
-    target_host_list = set(ismaster['hosts'])
-    connected_host_list = set([ismaster['me']])
+    target_host_list = set(hello['hosts'])
+    connected_host_list = set([hello['me']])
     admindb = client.get_database('admin')
 
-    # Run isMaster until we have connected to each host at least once.
+    # Run hello until we have connected to each host at least once.
     while connected_host_list != target_host_list:
-        ismaster = admindb.command("isMaster",
+        hello = admindb.command(HelloCompat.LEGACY_CMD,
                                    read_preference=ReadPreference.SECONDARY)
-        connected_host_list.update([ismaster["me"]])
+        connected_host_list.update([hello["me"]])
 
 
 def one(s):
@@ -542,6 +673,11 @@ def camel_to_snake_args(arguments):
         c2s = camel_to_snake(arg_name)
         arguments[c2s] = arguments.pop(arg_name)
     return arguments
+
+
+def snake_to_camel(snake):
+    # Regex to convert snake_case to lowerCamelCase.
+    return re.sub(r'_([a-z])', lambda m: m.group(1).upper(), snake)
 
 
 def parse_collection_options(opts):
@@ -602,27 +738,6 @@ def server_started_with_auth(client):
     return '--auth' in argv or '--keyFile' in argv
 
 
-def server_started_with_nojournal(client):
-    command_line = get_command_line(client)
-
-    # MongoDB 2.6.
-    if 'parsed' in command_line:
-        parsed = command_line['parsed']
-        if 'storage' in parsed:
-            storage = parsed['storage']
-            if 'journal' in storage:
-                return not storage['journal']['enabled']
-
-    return server_started_with_option(client, '--nojournal', 'nojournal')
-
-
-def server_is_master_with_slave(client):
-    command_line = get_command_line(client)
-    if 'parsed' in command_line:
-        return command_line['parsed'].get('master', False)
-    return '--master' in command_line['argv']
-
-
 def drop_collections(db):
     # Drop all non-system collections in this database.
     for coll in db.list_collection_names(
@@ -645,10 +760,10 @@ def joinall(threads):
 def connected(client):
     """Convenience to wait for a newly-constructed client to connect."""
     with warnings.catch_warnings():
-        # Ignore warning that "ismaster" is always routed to primary even
+        # Ignore warning that ping is always routed to primary even
         # if client's read preference isn't PRIMARY.
         warnings.simplefilter("ignore", UserWarning)
-        client.admin.command('ismaster')  # Force connection.
+        client.admin.command('ping')  # Force connection.
 
     return client
 
@@ -679,8 +794,18 @@ def wait_until(predicate, success_description, timeout=10):
         time.sleep(interval)
 
 
+def repl_set_step_down(client, **kwargs):
+    """Run replSetStepDown, first unfreezing a secondary with replSetFreeze."""
+    cmd = SON([('replSetStepDown', 1)])
+    cmd.update(kwargs)
+
+    # Unfreeze a secondary to ensure a speedy election.
+    client.admin.command(
+        'replSetFreeze', 0, read_preference=ReadPreference.SECONDARY)
+    client.admin.command(cmd)
+
 def is_mongos(client):
-    res = client.admin.command('ismaster')
+    res = client.admin.command(HelloCompat.LEGACY_CMD)
     return res.get('msg', '') == 'isdbgrid'
 
 
@@ -830,13 +955,9 @@ def gevent_monkey_patched():
 
 def eventlet_monkey_patched():
     """Check if eventlet's monkey patching is active."""
-    try:
-        import threading
-        import eventlet
-        return (threading.current_thread.__module__ ==
-                'eventlet.green.threading')
-    except ImportError:
-        return False
+    import threading
+    return (threading.current_thread.__module__ ==
+            'eventlet.green.threading')
 
 
 def is_greenthread_patched():
@@ -909,4 +1030,129 @@ def assertion_context(msg):
         yield
     except AssertionError as exc:
         msg = '%s (%s)' % (exc, msg)
-        py3compat.reraise(type(exc), msg, sys.exc_info()[2])
+        exc_type, exc_val, exc_tb = sys.exc_info()
+        raise exc_type(exc_val).with_traceback(exc_tb)
+
+
+def parse_spec_options(opts):
+    if 'readPreference' in opts:
+        opts['read_preference'] = parse_read_preference(
+            opts.pop('readPreference'))
+
+    if 'writeConcern' in opts:
+        opts['write_concern'] = WriteConcern(
+            **dict(opts.pop('writeConcern')))
+
+    if 'readConcern' in opts:
+        opts['read_concern'] = ReadConcern(
+            **dict(opts.pop('readConcern')))
+
+    if 'maxTimeMS' in opts:
+        opts['max_time_ms'] = opts.pop('maxTimeMS')
+
+    if 'maxCommitTimeMS' in opts:
+        opts['max_commit_time_ms'] = opts.pop('maxCommitTimeMS')
+
+    if 'hint' in opts:
+        hint = opts.pop('hint')
+        if not isinstance(hint, str):
+            hint = list(hint.items())
+        opts['hint'] = hint
+
+    # Properly format 'hint' arguments for the Bulk API tests.
+    if 'requests' in opts:
+        reqs = opts.pop('requests')
+        for req in reqs:
+            if 'name' in req:
+                # CRUD v2 format
+                args = req.pop('arguments', {})
+                if 'hint' in args:
+                    hint = args.pop('hint')
+                    if not isinstance(hint, str):
+                        hint = list(hint.items())
+                    args['hint'] = hint
+                req['arguments'] = args
+            else:
+                # Unified test format
+                bulk_model, spec = next(iter(req.items()))
+                if 'hint' in spec:
+                    hint = spec.pop('hint')
+                    if not isinstance(hint, str):
+                        hint = list(hint.items())
+                    spec['hint'] = hint
+        opts['requests'] = reqs
+
+    return dict(opts)
+
+
+def prepare_spec_arguments(spec, arguments, opname, entity_map,
+                           with_txn_callback):
+    for arg_name in list(arguments):
+        c2s = camel_to_snake(arg_name)
+        # PyMongo accepts sort as list of tuples.
+        if arg_name == "sort":
+            sort_dict = arguments[arg_name]
+            arguments[arg_name] = list(sort_dict.items())
+        # Named "key" instead not fieldName.
+        if arg_name == "fieldName":
+            arguments["key"] = arguments.pop(arg_name)
+        # Aggregate uses "batchSize", while find uses batch_size.
+        elif ((arg_name == "batchSize" or arg_name == "allowDiskUse") and
+              opname == "aggregate"):
+            continue
+        # Requires boolean returnDocument.
+        elif arg_name == "returnDocument":
+            arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
+        elif c2s == "requests":
+            # Parse each request into a bulk write model.
+            requests = []
+            for request in arguments["requests"]:
+                if 'name' in request:
+                    # CRUD v2 format
+                    bulk_model = camel_to_upper_camel(request["name"])
+                    bulk_class = getattr(operations, bulk_model)
+                    bulk_arguments = camel_to_snake_args(request["arguments"])
+                else:
+                    # Unified test format
+                    bulk_model, spec = next(iter(request.items()))
+                    bulk_class = getattr(operations, camel_to_upper_camel(bulk_model))
+                    bulk_arguments = camel_to_snake_args(spec)
+                requests.append(bulk_class(**dict(bulk_arguments)))
+            arguments["requests"] = requests
+        elif arg_name == "session":
+            arguments['session'] = entity_map[arguments['session']]
+        elif (opname in ('command', 'run_admin_command') and
+              arg_name == 'command'):
+            # Ensure the first key is the command name.
+            ordered_command = SON([(spec['command_name'], 1)])
+            ordered_command.update(arguments['command'])
+            arguments['command'] = ordered_command
+        elif opname == 'open_download_stream' and arg_name == 'id':
+            arguments['file_id'] = arguments.pop(arg_name)
+        elif opname != 'find' and c2s == 'max_time_ms':
+            # find is the only method that accepts snake_case max_time_ms.
+            # All other methods take kwargs which must use the server's
+            # camelCase maxTimeMS. See PYTHON-1855.
+            arguments['maxTimeMS'] = arguments.pop('max_time_ms')
+        elif opname == 'with_transaction' and arg_name == 'callback':
+            if 'operations' in arguments[arg_name]:
+                # CRUD v2 format
+                callback_ops = arguments[arg_name]['operations']
+            else:
+                # Unified test format
+                callback_ops = arguments[arg_name]
+            arguments['callback'] = lambda _: with_txn_callback(
+                copy.deepcopy(callback_ops))
+        elif opname == 'drop_collection' and arg_name == 'collection':
+            arguments['name_or_collection'] = arguments.pop(arg_name)
+        elif opname == 'create_collection':
+            if arg_name == 'collection':
+                arguments['name'] = arguments.pop(arg_name)
+            # Any other arguments to create_collection are passed through
+            # **kwargs.
+        elif opname == 'create_index' and arg_name == 'keys':
+            arguments['keys'] = list(arguments.pop(arg_name).items())
+        elif opname == 'drop_index' and arg_name == 'name':
+            arguments['index_or_name'] = arguments.pop(arg_name)
+        else:
+            arguments[c2s] = arguments.pop(arg_name)
