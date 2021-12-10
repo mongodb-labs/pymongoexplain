@@ -114,7 +114,6 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
-    @unittest.skip("Travis does not have replica sets set up yet")
     def test_watch(self):
         res = self.explain.watch()
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
