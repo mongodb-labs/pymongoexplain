@@ -45,6 +45,7 @@ class TestExplainableCollection(unittest.TestCase):
         self.logger = CommandLogger()
         self.client = MongoClient(serverSelectionTimeoutMS=1000,
                                   event_listeners=[self.logger])
+        self.server_version = self.client.server_info()["versionArray"]
         self.collection = self.client.db.products
         self.collection.insert_one({'x': 1})
         self.explain = ExplainCollection(self.collection)
@@ -230,7 +231,7 @@ class TestExplainableCollection(unittest.TestCase):
         from pymongoexplain import ExplainableCollection
         self.assertEqual(ExplainableCollection, ExplainCollection)
 
-    def test_settings(self):
+    def test_verbosity(self):
         res = self.explain.find({})
         self.assertFalse(self._recursiveIn("executionStats", res))
         self.assertFalse(self._recursiveIn("allPlansExecution", res))
@@ -243,7 +244,10 @@ class TestExplainableCollection(unittest.TestCase):
         self.assertTrue(self._recursiveIn("executionStats", res))
         self.assertTrue(self._recursiveIn("allPlansExecution", res))
 
-        self.explain.update_settings(verbosity="allPlansExecution")
+    def test_comment(self):
+        if self.server_version[0] < 5:
+            self.skipTest("MongoDB 4.x does not embed the comment in the "
+                          "explain document")
         res = self.explain.find({})
         self.assertFalse(self._recursiveIn("comment", res))
         self.explain.update_settings(comment="hey, I'm a comment")

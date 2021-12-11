@@ -35,10 +35,7 @@ class ExplainableCollection():
     def _explain_command(self, command):
         command_son = command.get_SON()
         explain_command = SON([("explain", command_son)])
-        if self.verbosity:
-            explain_command["verbosity"] = self.verbosity
-        else:
-            explain_command["verbosity"] = "queryPlanner"
+        explain_command["verbosity"] = self.verbosity or "queryPlanner"
         if self.comment:
             explain_command["comment"] = self.comment
         self.last_cmd_payload = command_son
