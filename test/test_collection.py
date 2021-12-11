@@ -16,6 +16,7 @@
 import unittest
 import subprocess
 import os
+from collections import abc
 
 from pymongo import MongoClient
 from pymongo import monitoring
@@ -28,6 +29,7 @@ from pymongoexplain.explainable_collection import ExplainCollection, Document
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
         self.cmd_payload = {}
+
     def started(self, event):
         self.cmd_payload = event.command
 
@@ -37,11 +39,12 @@ class CommandLogger(monitoring.CommandListener):
     def failed(self, event):
         pass
 
+
 class TestExplainableCollection(unittest.TestCase):
     def setUp(self) -> None:
         self.logger = CommandLogger()
         self.client = MongoClient(serverSelectionTimeoutMS=1000,
-                                 event_listeners=[self.logger])
+                                  event_listeners=[self.logger])
         self.collection = self.client.db.products
         self.collection.insert_one({'x': 1})
         self.explain = ExplainCollection(self.collection)
@@ -50,6 +53,18 @@ class TestExplainableCollection(unittest.TestCase):
         for key in ours.keys():
             self.assertEqual(ours[key], theirs[key])
 
+    def _recursiveIn(self, member, container):
+        if isinstance(container, abc.Mapping):
+            if member in container:
+                return True
+            return any([self._recursiveIn(member, v) for v in
+                        container.values()])
+        if isinstance(container, list):
+            if member in container:
+                return True
+            return any([self._recursiveIn(member, v) for v in
+                        container])
+        return False
 
     def test_update_one(self):
         self.collection.update_one({"quantity": 1057, "category": "apparel"},
@@ -83,7 +98,7 @@ class TestExplainableCollection(unittest.TestCase):
         self.collection.count_documents({"ord_dt": {"$gt": 10}})
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.count_documents({"ord_dt": {"$gt": 10}})
-        #self.assertIn("queryPlanner", res)
+        self.assertTrue(self._recursiveIn("queryPlanner", res))
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -94,7 +109,7 @@ class TestExplainableCollection(unittest.TestCase):
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.aggregate([{"$project": {"tags": 1}}, {"$unwind":
                                                                  "$tags"}], None)
-        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
+        self.assertTrue(self._recursiveIn("queryPlanner", res))
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -116,13 +131,13 @@ class TestExplainableCollection(unittest.TestCase):
 
     def test_watch(self):
         res = self.explain.watch()
-        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
+        self.assertTrue(self._recursiveIn("queryPlanner", res))
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
                               batch_size=10, full_document="updateLookup")
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
                                  batch_size=10, full_document="updateLookup")
-        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
+        self.assertTrue(self._recursiveIn("queryPlanner", res))
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -141,8 +156,6 @@ class TestExplainableCollection(unittest.TestCase):
         res = self.explain.find({}, limit=10)
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
-
-
 
     def test_find_one(self):
         self.collection.find_one(projection=['a', 'b.c'])
@@ -216,6 +229,28 @@ class TestExplainableCollection(unittest.TestCase):
         from pymongoexplain import ExplainCollection
         from pymongoexplain import ExplainableCollection
         self.assertEqual(ExplainableCollection, ExplainCollection)
+
+    def test_settings(self):
+        res = self.explain.find({})
+        self.assertFalse(self._recursiveIn("executionStats", res))
+        self.assertFalse(self._recursiveIn("allPlansExecution", res))
+        self.explain.update_settings(verbosity="executionStats")
+        res = self.explain.find({})
+        self.assertTrue(self._recursiveIn("executionStats", res))
+        self.assertFalse(self._recursiveIn("allPlansExecution", res))
+        self.explain.update_settings(verbosity="allPlansExecution")
+        res = self.explain.find({})
+        self.assertTrue(self._recursiveIn("executionStats", res))
+        self.assertTrue(self._recursiveIn("allPlansExecution", res))
+
+        res = self.explain.find({})
+        self.assertFalse(self._recursiveIn("comment", res))
+        self.explain.update_settings(comment="hey, I'm a comment")
+        res = self.explain.find({})
+        self.assertTrue(self._recursiveIn("comment", res))
+
+
+
 
 
 if __name__ == '__main__':
