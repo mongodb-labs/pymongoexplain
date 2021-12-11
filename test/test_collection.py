@@ -243,10 +243,12 @@ class TestExplainableCollection(unittest.TestCase):
         self.assertTrue(self._recursiveIn("executionStats", res))
         self.assertTrue(self._recursiveIn("allPlansExecution", res))
 
+        self.explain.update_settings(verbosity=None)
         res = self.explain.find({})
         self.assertFalse(self._recursiveIn("comment", res))
         self.explain.update_settings(comment="hey, I'm a comment")
         res = self.explain.find({})
+        print(res)
         self.assertTrue(self._recursiveIn("comment", res))
 
 
