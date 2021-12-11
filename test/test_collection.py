@@ -245,7 +245,7 @@ class TestExplainableCollection(unittest.TestCase):
         self.assertTrue(self._recursiveIn("allPlansExecution", res))
 
     def test_comment(self):
-        if self.server_version[0] < 5:
+        if tuple(self.server_version) < (5, 1, 0, 0):
             self.skipTest("MongoDB 4.x does not embed the comment in the "
                           "explain document")
         res = self.explain.find({})

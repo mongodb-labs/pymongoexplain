@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "pypy-3.7"]
-        mongodb-version: ["4.4", "5.0"]
+        mongodb-version: ["4.4", "5.1"]
         pymongo-version: ["3.11.0", "4.0.0"]
         # pymongo 4.0 does not support python 3.5
         exclude:
