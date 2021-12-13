@@ -16,7 +16,6 @@
 import unittest
 import subprocess
 import os
-from collections import abc
 
 from pymongo import MongoClient
 from pymongo import monitoring
@@ -29,7 +28,6 @@ from pymongoexplain.explainable_collection import ExplainCollection, Document
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
         self.cmd_payload = {}
-
     def started(self, event):
         self.cmd_payload = event.command
 
@@ -39,13 +37,11 @@ class CommandLogger(monitoring.CommandListener):
     def failed(self, event):
         pass
 
-
 class TestExplainableCollection(unittest.TestCase):
     def setUp(self) -> None:
         self.logger = CommandLogger()
         self.client = MongoClient(serverSelectionTimeoutMS=1000,
-                                  event_listeners=[self.logger])
-        self.server_version = self.client.server_info()["versionArray"]
+                                 event_listeners=[self.logger])
         self.collection = self.client.db.products
         self.collection.insert_one({'x': 1})
         self.explain = ExplainCollection(self.collection)
@@ -54,18 +50,6 @@ class TestExplainableCollection(unittest.TestCase):
         for key in ours.keys():
             self.assertEqual(ours[key], theirs[key])
 
-    def _recursiveIn(self, member, container):
-        if isinstance(container, abc.Mapping):
-            if member in container:
-                return True
-            return any([self._recursiveIn(member, v) for v in
-                        container.values()])
-        if isinstance(container, list):
-            if member in container:
-                return True
-            return any([self._recursiveIn(member, v) for v in
-                        container])
-        return False
 
     def test_update_one(self):
         self.collection.update_one({"quantity": 1057, "category": "apparel"},
@@ -99,7 +83,7 @@ class TestExplainableCollection(unittest.TestCase):
         self.collection.count_documents({"ord_dt": {"$gt": 10}})
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.count_documents({"ord_dt": {"$gt": 10}})
-        self.assertTrue(self._recursiveIn("queryPlanner", res))
+        #self.assertIn("queryPlanner", res)
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -110,7 +94,7 @@ class TestExplainableCollection(unittest.TestCase):
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.aggregate([{"$project": {"tags": 1}}, {"$unwind":
                                                                  "$tags"}], None)
-        self.assertTrue(self._recursiveIn("queryPlanner", res))
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -130,15 +114,16 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
+    @unittest.skip("Travis does not have replica sets set up yet")
     def test_watch(self):
         res = self.explain.watch()
-        self.assertTrue(self._recursiveIn("queryPlanner", res))
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
-                              batch_size=10, full_document="updateLookup")
+                               batch_size=10, full_document="updateLookup")
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
-                                 batch_size=10, full_document="updateLookup")
-        self.assertTrue(self._recursiveIn("queryPlanner", res))
+                            batch_size=10, full_document="updateLookup")
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
@@ -157,6 +142,8 @@ class TestExplainableCollection(unittest.TestCase):
         res = self.explain.find({}, limit=10)
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
+
+
 
     def test_find_one(self):
         self.collection.find_one(projection=['a', 'b.c'])
@@ -233,27 +220,25 @@ class TestExplainableCollection(unittest.TestCase):
 
     def test_verbosity(self):
         res = self.explain.find({})
-        self.assertFalse(self._recursiveIn("executionStats", res))
-        self.assertFalse(self._recursiveIn("allPlansExecution", res))
-        self.explain.update_settings(verbosity="executionStats")
+        self.assertNotIn("executionStats", res)
+        self.assertNotIn("allPlansExecution", res.get("executionStats", []))
+        self.explain = ExplainCollection(self.collection, verbosity="executionStats")
         res = self.explain.find({})
-        self.assertTrue(self._recursiveIn("executionStats", res))
-        self.assertFalse(self._recursiveIn("allPlansExecution", res))
-        self.explain.update_settings(verbosity="allPlansExecution")
+        self.assertIn("executionStats", res)
+        self.assertNotIn("allPlansExecution", res["executionStats"])
+        self.explain = ExplainCollection(self.collection, verbosity="allPlansExecution")
         res = self.explain.find({})
-        self.assertTrue(self._recursiveIn("executionStats", res))
-        self.assertTrue(self._recursiveIn("allPlansExecution", res))
+        self.assertIn("executionStats", res)
+        self.assertIn("allPlansExecution", res["executionStats"])
 
     def test_comment(self):
-        if tuple(self.server_version) < (5, 0, 0, 0):
-            self.skipTest("MongoDB 4.x does not embed the comment in the "
-                          "explain document")
-        res = self.explain.find({})
-        self.assertFalse(self._recursiveIn("comment", res))
-        self.explain.update_settings(comment="hey, I'm a comment")
-        res = self.explain.find({})
-        self.assertTrue(self._recursiveIn("comment", res))
-
+        self.explain.find({})
+        self.assertNotIn("comment", self.logger.cmd_payload)
+        self.explain = ExplainCollection(self.collection, comment="hey, "
+                                                                  "I'm a "
+                                                                  "comment")
+        self.explain.find({})
+        self.assertIn("comment", self.logger.cmd_payload)
 
 if __name__ == '__main__':
     unittest.main()
