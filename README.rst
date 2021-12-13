@@ -98,6 +98,7 @@ them to the ``ExplainableCollection`` constructor like so::
 
     explain = ExplainableCollection(collection, verbosity="queryPlanner",
                                     comment="I'm a comment")
+
 For more information see the documentation for the explain_ command.
 
 .. _explain: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.

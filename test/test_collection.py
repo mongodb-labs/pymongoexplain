@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 import subprocess
 import os
@@ -114,16 +113,18 @@ class TestExplainableCollection(unittest.TestCase):
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
-    @unittest.skip("Travis does not have replica sets set up yet")
     def test_watch(self):
         res = self.explain.watch()
-        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
+        formatData(res, 0)
+        self.assertIn("queryPlanner", res["shards"]["demo-set-0"]["stages"][
+            0]["$cursor"])
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
                                batch_size=10, full_document="updateLookup")
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
                             batch_size=10, full_document="updateLookup")
-        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
+        self.assertIn("queryPlanner", res["shards"]["demo-set-0"]["stages"][
+            0]["$cursor"])
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
