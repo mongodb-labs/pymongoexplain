@@ -115,7 +115,6 @@ class TestExplainableCollection(unittest.TestCase):
 
     def test_watch(self):
         res = self.explain.watch()
-        formatData(res, 0)
         self.assertIn("queryPlanner", res["shards"]["demo-set-0"]["stages"][
             0]["$cursor"])
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
