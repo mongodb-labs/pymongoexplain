@@ -119,10 +119,10 @@ class TestExplainableCollection(unittest.TestCase):
         res = self.explain.watch()
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
-                               batch_size=10, full_document="updateLookup")
+                              batch_size=10, full_document="updateLookup")
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
-                            batch_size=10, full_document="updateLookup")
+                                 batch_size=10, full_document="updateLookup")
         self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
@@ -234,9 +234,7 @@ class TestExplainableCollection(unittest.TestCase):
     def test_comment(self):
         self.explain.find({})
         self.assertNotIn("comment", self.logger.cmd_payload)
-        self.explain = ExplainCollection(self.collection, comment="hey, "
-                                                                  "I'm a "
-                                                                  "comment")
+        self.explain = ExplainCollection(self.collection, comment="comment")
         self.explain.find({})
         self.assertIn("comment", self.logger.cmd_payload)
 
