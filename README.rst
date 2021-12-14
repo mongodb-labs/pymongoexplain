@@ -93,6 +93,16 @@ To run explain on a command, first instantiate an ``ExplainableCollection`` from
     collection = client.db.products
     explain = ExplainableCollection(collection)
 
+If you wish to configure the options for the explain command itself, pass
+them to the ``ExplainableCollection`` constructor like so::
+
+    explain = ExplainableCollection(collection, verbosity="queryPlanner",
+                                    comment="I'm a comment")
+
+For more information see the documentation for the explain_ command.
+
+.. _explain: https://docs.mongodb.com/master/reference/command/explain/#dbcmd.explain.
+
 Now you are ready to explain some commands. Remember that explaining a command does not execute it::
 
     result = explain.update_one({"quantity": 1057, "category": "apparel"}, {"$set": {"reorder": True}})

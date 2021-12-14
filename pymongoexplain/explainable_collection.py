@@ -26,14 +26,18 @@ Document = Union[dict, SON]
 
 
 class ExplainableCollection():
-    def __init__(self, collection):
+    def __init__(self, collection, verbosity=None, comment=None):
         self.collection = collection
         self.last_cmd_payload = None
+        self.verbosity = verbosity or "queryPlanner"
+        self.comment = comment
 
     def _explain_command(self, command):
         command_son = command.get_SON()
         explain_command = SON([("explain", command_son)])
-        explain_command["verbosity"] = "queryPlanner"
+        explain_command["verbosity"] = self.verbosity
+        if self.comment:
+            explain_command["comment"] = self.comment
         self.last_cmd_payload = command_son
         return self.collection.database.command(explain_command)
 

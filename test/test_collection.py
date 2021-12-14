@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 import subprocess
 import os
@@ -28,6 +27,7 @@ from pymongoexplain.explainable_collection import ExplainCollection, Document
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
         self.cmd_payload = {}
+
     def started(self, event):
         self.cmd_payload = event.command
 
@@ -36,6 +36,7 @@ class CommandLogger(monitoring.CommandListener):
 
     def failed(self, event):
         pass
+
 
 class TestExplainableCollection(unittest.TestCase):
     def setUp(self) -> None:
@@ -217,6 +218,25 @@ class TestExplainableCollection(unittest.TestCase):
         from pymongoexplain import ExplainableCollection
         self.assertEqual(ExplainableCollection, ExplainCollection)
 
+    def test_verbosity(self):
+        res = self.explain.find({})
+        self.assertNotIn("executionStats", res)
+        self.assertNotIn("allPlansExecution", res.get("executionStats", []))
+        self.explain = ExplainCollection(self.collection, verbosity="executionStats")
+        res = self.explain.find({})
+        self.assertIn("executionStats", res)
+        self.assertNotIn("allPlansExecution", res["executionStats"])
+        self.explain = ExplainCollection(self.collection, verbosity="allPlansExecution")
+        res = self.explain.find({})
+        self.assertIn("executionStats", res)
+        self.assertIn("allPlansExecution", res["executionStats"])
+
+    def test_comment(self):
+        self.explain.find({})
+        self.assertNotIn("comment", self.logger.cmd_payload)
+        self.explain = ExplainCollection(self.collection, comment="comment")
+        self.explain.find({})
+        self.assertIn("comment", self.logger.cmd_payload)
 
 if __name__ == '__main__':
     unittest.main()
