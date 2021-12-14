@@ -27,6 +27,7 @@ from pymongoexplain.explainable_collection import ExplainCollection, Document
 class CommandLogger(monitoring.CommandListener):
     def __init__(self):
         self.cmd_payload = {}
+
     def started(self, event):
         self.cmd_payload = event.command
 
@@ -35,6 +36,7 @@ class CommandLogger(monitoring.CommandListener):
 
     def failed(self, event):
         pass
+
 
 class TestExplainableCollection(unittest.TestCase):
     def setUp(self) -> None:
@@ -115,15 +117,13 @@ class TestExplainableCollection(unittest.TestCase):
 
     def test_watch(self):
         res = self.explain.watch()
-        self.assertIn("queryPlanner", res["shards"]["demo-set-0"]["stages"][
-            0]["$cursor"])
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         self.collection.watch(pipeline=[{"$project": {"tags": 1}}],
                                batch_size=10, full_document="updateLookup")
         last_logger_payload = self.logger.cmd_payload
         res = self.explain.watch(pipeline=[{"$project": {"tags": 1}}],
                             batch_size=10, full_document="updateLookup")
-        self.assertIn("queryPlanner", res["shards"]["demo-set-0"]["stages"][
-            0]["$cursor"])
+        self.assertIn("queryPlanner", res["stages"][0]["$cursor"])
         last_cmd_payload = self.explain.last_cmd_payload
         self._compare_command_dicts(last_cmd_payload, last_logger_payload)
 
