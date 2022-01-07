@@ -4,7 +4,8 @@ Changelog
 
 Changes in version 1.2.0
 ------------------------
-- Added ability to explain command options
+- Added ability to configure explain command options using constructor
+  keyword parameters ``verbosity`` and ``comment``.
 - Added support for PyMongo 4.0
 - Added support for Python 3.9 and 3.10
 
