@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymongoexplain"
+dynamic = ["version"]
+description = "Explainable CRUD API for PyMongo"
+readme = "README.rst"
+license = "Apache License, Version 2.0"
+requires-python = ">=3.7"
+authors = [
+    { name = "Julius Park" },
+]
+keywords = [
+    "mongo",
+    "mongodb",
+    "pymongo",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Database",
+]
+dependencies = [
+    "pymongo>=4.0",
+]
+
+[project.scripts]
+pymongoexplain = "pymongoexplain.cli_explain:cli_explain"
+
+[project.urls]
+Homepage = "https://github.com/mongodb-labs/pymongoexplain"
+
+[tool.setuptools.dynamic]
+version = {attr = "pymongoexplain.version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pymongoexplain"]
