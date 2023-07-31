@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
-from test.utils import TestCreator
+from test.utils import Creator
 from test.utils_spec_runner import SpecRunner
 
 
@@ -71,7 +71,7 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
+test_creator = Creator(create_test, TestSpec, _TEST_PATH)
 test_creator.create_tests()
 
 if __name__ == "__main__":
