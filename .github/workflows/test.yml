@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.7"]
@@ -19,7 +19,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.7.0
         with:
-          mongodb-replica-set: test-rs
+          mongodb-version: 4.4
       # add caching to reduce bandwidth and save time
       - uses: actions/cache@v3
         with:
