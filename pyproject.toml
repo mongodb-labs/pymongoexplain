@@ -45,6 +45,9 @@ pymongoexplain = "pymongoexplain.cli_explain:cli_explain"
 [project.urls]
 Homepage = "https://github.com/mongodb-labs/pymongoexplain"
 
+[project.optional-dependencies]
+test = ["pytest"]
+
 [tool.setuptools.dynamic]
 version = {attr = "pymongoexplain.version.__version__"}
 
