@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Database",
 ]
 dependencies = [
-    "pymongo>=4.0",
+    "pymongo>=4.4",
 ]
 
 [project.scripts]
