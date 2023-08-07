@@ -2,6 +2,12 @@
 Changelog
 =========
 
+Changes in version 1.3.0
+------------------------
+- Added support for Python 3.11 and 3.12.  Dropped support for Python versions
+  less than 3.7.
+- Dropped support for PyMongo versions less than 4.0.
+
 Changes in version 1.2.0
 ------------------------
 - Added ability to configure explain command options using constructor
