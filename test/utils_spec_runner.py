@@ -415,13 +415,6 @@ class SpecRunner(IntegrationTest):
                 event.command['getMore'] = Int64(42)
             elif event.command_name == 'killCursors':
                 event.command['cursors'] = [Int64(42)]
-            elif event.command_name == 'update':
-                # TODO: remove this once PYTHON-1744 is done.
-                # Add upsert and multi fields back into expectations.
-                updates = expectation[event_type]['command']['updates']
-                for update in updates:
-                    update.setdefault('upsert', False)
-                    update.setdefault('multi', False)
 
             # Replace afterClusterTime: 42 with actual afterClusterTime.
             expected_cmd = expectation[event_type]['command']
@@ -458,7 +451,15 @@ class SpecRunner(IntegrationTest):
                             self.fail("Expected key [%s] in %r" % (
                                 key, actual))
                         else:
-                            self.assertEqual(val, decode_raw(actual[key]),
+                            actual_val = decode_raw(actual[key])
+                            # Use the equivalent of `"$$unsetOrMatches": false` for "upsert" and "multi".
+                            if isinstance(val, list):
+                                for (i, j) in zip(val, actual_val):
+                                    if "multi" in j:
+                                        i.setdefault("multi", False)
+                                    if "upsert" in j:
+                                        i.setdefault("upsert", False)
+                            self.assertEqual(val, actual_val,
                                              "Key [%s] in %s" % (key, actual))
                 else:
                     self.assertEqual(actual, expected)

@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Explainable CRUD API for PyMongo"
 readme = "README.rst"
 license = { file = "LICENSE" }
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 authors = [
     { name = "Julius Park" },
 ]
@@ -25,18 +25,17 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
 ]
 dependencies = [
-    "pymongo>=4.4",
+    "pymongo>=4.9",
 ]
 
 [project.scripts]
