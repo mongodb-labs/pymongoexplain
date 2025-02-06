@@ -34,5 +34,5 @@ jobs:
           python -m unittest discover .
       - name: Test min pymongo
         run: |
-          python -m pip pymongo==4.9
+          python -m pip install pymongo==4.9
           python -m unittest discover .
