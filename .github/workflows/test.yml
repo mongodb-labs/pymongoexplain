@@ -10,19 +10,19 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.10"]
       fail-fast: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.8.0
+        uses: supercharge/mongodb-github-action@1.12.0
         with:
           mongodb-version: "4.4"
           mongodb-replica-set: test-rs
       # add caching to reduce bandwidth and save time
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.python-version}}-pip-${{ hashFiles('**/setup.py') }}
