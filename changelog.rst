@@ -4,8 +4,8 @@ Changelog
 
 Changes in version 1.4.0 (unreleased)
 -------------------------------------
-- Added support for Python 3.13.  Dropped support for Python versions
-  less than 3.9.
+- Added support for Python 3.13 and 3.14.  Dropped support for Python versions
+  less than 3.10.
 - Dropped support for PyMongo versions less than 4.9.
 
 Changes in version 1.3.0
