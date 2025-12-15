@@ -22,7 +22,7 @@ jobs:
           mongodb-version: "4.4"
           mongodb-replica-set: test-rs
       # add caching to reduce bandwidth and save time
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.python-version}}-pip-${{ hashFiles('**/setup.py') }}
