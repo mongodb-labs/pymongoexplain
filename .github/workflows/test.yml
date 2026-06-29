@@ -10,7 +10,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "pypy-3.11"]
       fail-fast: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -22,7 +22,7 @@ jobs:
           mongodb-version: "4.4"
           mongodb-replica-set: test-rs
       # add caching to reduce bandwidth and save time
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-${{ matrix.python-version}}-pip-${{ hashFiles('**/setup.py') }}
