@@ -69,9 +69,9 @@ Please include all of the following information when opening an issue:
 Dependencies
 ============
 
-PyMongoExplain requires CPython 3.7+, and PyPy3.7+.
+PyMongoExplain requires CPython 3.11+, and PyPy3.11+.
 
-PyMongoExplain requires `PyMongo>=4.4 <https://github.com/mongodb/mongo-python-driver/>`_
+PyMongoExplain requires `PyMongo>=4.9 <https://github.com/mongodb/mongo-python-driver/>`_
 
 Testing
 =======
